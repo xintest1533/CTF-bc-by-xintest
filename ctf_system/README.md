@@ -1,114 +1,373 @@
 # CTF攻防对抗赛事系统
 
-一套完整的对等双向CTF攻防对抗赛事系统，包含公网裁判服务和跨平台选手本地靶机客户端。
+## 简介
+
+一套完整的对等双向CTF攻防对抗赛事系统，支持Windows/Mac/Linux全平台参赛，包含公网裁判服务和跨平台选手本地靶机客户端。
 
 ## 项目结构
 
 ```
 ctf_system/
-├── judge/                    # 裁判服务
-│   ├── config/               # 配置文件
-│   │   └── judge_config.py
-│   ├── tcp_heartbeat/        # TCP心跳服务
-│   │   └── heartbeat_server.py
-│   ├── http_submit/          # HTTP FLAG提交接口
-│   │   └── submit_server.py
-│   ├── web_dashboard/        # Web可视化看板
-│   │   └── dashboard.py
-│   └── utils/                # 工具模块
+├── judge/
+│   ├── config/judge_config.py
+│   ├── tcp_heartbeat/heartbeat_server.py
+│   ├── http_submit/submit_server.py
+│   ├── web_dashboard/dashboard.py
+│   └── utils/
 │       ├── game_controller.py
 │       └── anti_cheat.py
-├── target_client/            # 选手客户端
-│   ├── config/               # 配置文件
-│   │   └── client_config.py
-│   ├── utils/                # 工具模块
+├── target_client/
+│   ├── config/client_config.py
+│   ├── target_server.py
+│   ├── run_client.py
+│   ├── ip_config.ini
+│   ├── utils/
 │   │   ├── ip_config.py
 │   │   └── heartbeat_client.py
-│   ├── scripts/              # 脚本
-│   │   └── submit_flag.py
-│   ├── target_server.py      # 靶机服务（含6类漏洞）
-│   ├── run_client.py         # 客户端启动入口
-│   └── ip_config.ini         # IP配置文件
-├── scripts/                  # 辅助脚本
-│   ├── firewall/             # 防火墙关闭脚本
-│   ├── connectivity/         # 连通性检测脚本
-│   └── startup/              # 启动脚本
-└── requirements.txt          # 依赖包
+│   └── scripts/submit_flag.py
+├── scripts/
+│   ├── firewall/
+│   ├── connectivity/
+│   └── startup/
+├── requirements.txt
+└── README.md
 ```
 
-## 功能特性
+## 环境要求
 
-### 裁判服务
-- TCP长连接心跳服务（9999端口）
-- HTTP FLAG提交接口（8080端口）
-- Web可视化看板（8000端口）
-- 三阶段比赛时序控制
-- 选手状态管理与淘汰机制
-- 防作弊与公平机制
-
-### 靶机客户端
-- 6类内置漏洞：HEADache、弱密码、任意文件读取、XSS、SSTI、CSP
-- 修复期加固接口
-- 跨平台IP配置校验
-- 断线重连与复活机制
-- 本地日志持久化
-
-### 跨平台支持
-- Windows、Mac、Linux全平台适配
-- 统一防火墙关闭脚本
-- 统一连通性检测脚本
+- Python 3.7+
+- pip install -r requirements.txt
 
 ## 快速开始
 
-### 环境要求
-- Python 3.7+
-- 安装依赖：`pip install -r requirements.txt`
+### 1. 安装依赖
 
-### 启动裁判服务
 ```bash
 cd ctf_system
+pip install -r requirements.txt
+```
+
+### 2. 启动裁判服务
+
+```bash
+# 方式一：分别启动
 python judge/tcp_heartbeat/heartbeat_server.py &
 python judge/http_submit/submit_server.py &
 python judge/web_dashboard/dashboard.py &
+
+# 方式二：使用启动脚本
+bash scripts/startup/start_judge.sh
 ```
 
-### 启动选手客户端
-```bash
-cd ctf_system/target_client
-# 先配置 ip_config.ini
-python run_client.py
-```
+服务端口：
+- TCP心跳服务: 9999
+- HTTP提交接口: 8080
+- Web可视化看板: 8000
 
-## 比赛流程
+### 3. 启动选手客户端
 
-1. **修复调试期（30分钟）**：修改源码、修复漏洞、修改密码
-2. **稳定校验期（5分钟）**：禁止修改，仅查看日志
-3. **自由攻防期（60分钟）**：渗透其他选手靶机，提交FLAG
+**第一步：配置IP**
 
-## FLAG提交
+编辑 `target_client/ip_config.ini`：
 
-```bash
-# curl方式
-curl -X POST http://<裁判IP>:8080/submit_flag \
-  -H "Content-Type: application/json" \
-  -d '{"attacker_id":"player1","target_id":"player2","flag":"FLAG{xxx}"}'
-
-# Python脚本方式
-python submit_flag.py player1 player2 FLAG{xxx}
-```
-
-## 配置说明
-
-### ip_config.ini
 ```ini
 [NETWORK]
 primary_ip = 192.168.1.100
 backup_ip = 192.168.1.101
 ```
 
+**第二步：关闭防火墙**
+
+Windows：
+```cmd
+scripts\firewall\disable_firewall_windows.bat
+```
+
+Linux：
+```bash
+sudo bash scripts/firewall/disable_firewall_linux.sh
+```
+
+Mac：
+```bash
+sudo bash scripts/firewall/disable_firewall_mac.sh
+```
+
+**第三步：检测连通性**
+
+Windows：
+```cmd
+scripts\connectivity\check_connectivity_windows.bat
+```
+
+Linux：
+```bash
+bash scripts/connectivity/check_connectivity_linux.sh
+```
+
+Mac：
+```bash
+bash scripts/connectivity/check_connectivity_mac.sh
+```
+
+**第四步：启动客户端**
+
+```bash
+cd target_client
+python run_client.py
+```
+
+## 比赛流程
+
+### 第一阶段：修复调试期（30分钟）
+
+允许操作：
+- 修改靶机源码
+- 调用加固接口修复漏洞
+- 修改默认密码 admin/admin123
+- 内网扫描探测其他选手
+
+禁止操作：
+- 提交FLAG
+- DoS压测
+
+### 第二阶段：稳定校验期（5分钟）
+
+允许操作：
+- 查看本机访问日志
+
+禁止操作：
+- 修改靶机代码
+- 重启客户端
+- 修改IP配置文件
+
+淘汰条件：
+- TCP心跳断线超30秒
+- 靶机Web服务进程崩溃
+
+### 第三阶段：自由攻防期（60分钟）
+
+允许操作：
+- 查看本机攻击日志
+- 渗透其他选手靶机
+- 提交FLAG
+
+禁止操作：
+- 修改自身防御配置
+- 修改IP配置文件
+
+## 漏洞说明
+
+靶机内置6类漏洞，需在修复期发现并修复：
+
+### 1. HEADache请求头漏洞
+
+位置：`/api/status`
+
+特征：通过特定请求头获取系统敏感信息
+
+修复接口：`POST /harden/disable_vulnerability`
+```json
+{"vulnerability": "headache"}
+```
+
+### 2. 弱密码登录漏洞
+
+位置：`/auth`
+
+特征：默认账号密码 admin/admin123，登录后可获取备用FLAG
+
+修复方式：修改密码
+```json
+POST /harden/change_password
+{"new_password": "your_new_password"}
+```
+
+### 3. 任意文件读取漏洞
+
+位置：`/documents`
+
+特征：可读取系统任意文件
+
+修复接口：`POST /harden/disable_vulnerability`
+```json
+{"vulnerability": "file_read"}
+```
+
+### 4. 反射型XSS漏洞
+
+位置：`/search`
+
+特征：搜索关键词未过滤，可执行恶意脚本
+
+修复接口：`POST /harden/disable_vulnerability`
+```json
+{"vulnerability": "xss"}
+```
+
+### 5. SSTI模板注入漏洞
+
+位置：`/profile`
+
+特征：用户输入直接渲染到模板中
+
+修复接口：`POST /harden/disable_vulnerability`
+```json
+{"vulnerability": "ssti"}
+```
+
+### 6. CSP策略漏洞
+
+位置：`/csp-test`
+
+特征：CSP策略配置不当，允许不安全的脚本执行
+
+修复接口：`POST /harden/disable_vulnerability`
+```json
+{"vulnerability": "csp"}
+```
+
+## FLAG提交
+
+### 方式一：curl
+
+```bash
+curl -X POST http://<裁判IP>:8080/submit_flag \
+  -H "Content-Type: application/json" \
+  -d '{"attacker_id":"player1","target_id":"player2","flag":"FLAG{xxx}"}'
+```
+
+### 方式二：Python脚本
+
+```bash
+python target_client/scripts/submit_flag.py player1 player2 FLAG{xxx}
+```
+
+### 方式三：PowerShell（Windows）
+
+```powershell
+Invoke-RestMethod -Uri "http://<裁判IP>:8080/submit_flag" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"attacker_id":"player1","target_id":"player2","flag":"FLAG{xxx}"}'
+```
+
+## 排名规则
+
+1. 存活选手优先
+2. 同存活选手按得分排名（捕获FLAG数×10 + 修复漏洞数）
+3. 同淘汰选手按FLAG被提交时间排序（越晚越高）
+4. 未被淘汰且未捕获FLAG者按漏洞修复得分排名
+
+## 管理接口
+
+### 查看加固状态
+
+```bash
+curl http://localhost:8000/harden/status
+```
+
+### 添加IP白名单
+
+```bash
+curl -X POST http://localhost:8000/harden/add_whitelist \
+  -H "Content-Type: application/json" \
+  -d '{"ip": "192.168.1.100"}'
+```
+
+### 查看访问日志
+
+```bash
+curl http://localhost:8000/logs/access
+```
+
+### 查看攻击日志
+
+```bash
+curl http://localhost:8000/logs/attack
+```
+
+## 配置说明
+
+### ip_config.ini
+
+```ini
+[NETWORK]
+primary_ip = 主内网IP（必填）
+backup_ip = 备用内网IP（可选）
+```
+
+启动校验规则：
+- 无primary_ip：弹窗报错终止程序
+- 仅primary_ip：正常运行
+- 双IP齐全：断线时自动切换备用IP
+
+### judge_config.py
+
+```python
+TCP_HEARTBEAT_PORT = 9999
+HTTP_SUBMIT_PORT = 8080
+DASHBOARD_PORT = 8000
+
+HEARTBEAT_INTERVAL = 5
+DISCONNECT_PENALTY_TIME = 30
+
+FLAG_SUBMIT_RATE_LIMIT = 3
+FLAG_SUBMIT_TIME_WINDOW = 60
+```
+
+## 裁判Web看板
+
+访问地址：`http://<裁判IP>:8000`
+
+功能：
+- 实时展示当前阶段和剩余时间
+- 选手在线/离线/淘汰状态
+- FLAG提交流水
+- 当前排名
+- 赛事控制（开始/暂停/结束/切换阶段）
+
 ## 安全规则
-- 未关闭防火墙者禁止参赛
-- DoS攻击者直接淘汰
-- 稳定/攻击期修改源码判定违规
-- 断线超30秒未重连判定淘汰
-- 每位选手仅一次复活机会
+
+1. 未关闭防火墙者禁止参赛
+2. DoS攻击者（10秒超100次请求）直接淘汰
+3. 稳定/攻击期修改源码判定违规淘汰
+4. 断线超30秒未重连判定淘汰
+5. 每位选手仅一次复活机会
+6. 禁止提交自己的FLAG
+
+## 故障处理
+
+### 集体VPN断连
+
+裁判可通过Web看板暂停比赛，暂停期间不计算断线倒计时。
+
+### 客户端断线
+
+- 0-10秒：离线警告
+- 10-30秒：持续倒计时重连
+- 超30秒：淘汰（可使用复活机会重置）
+
+### 服务器崩溃
+
+TCP心跳和HTTP提交分离解耦，单一进程崩溃不影响另一服务。
+
+## 跨平台适配
+
+| 平台 | 防火墙脚本 | 连通性脚本 | 启动脚本 |
+|------|-----------|-----------|---------|
+| Windows | disable_firewall_windows.bat | check_connectivity_windows.bat | start_client_windows.bat |
+| Linux | disable_firewall_linux.sh | check_connectivity_linux.sh | start_client.sh |
+| Mac | disable_firewall_mac.sh | check_connectivity_mac.sh | start_client.sh |
+
+## 注意事项
+
+1. 所有选手需接入同一局域网或VPN
+2. 靶机端口由选手自定义（默认8000）
+3. 选手之间通过内网IP+端口互相访问
+4. 源码哈希在校验期和攻击期会被裁判校验
+5. 仅允许修改密码和配置类文件
+
+## 许可证
+
+MIT License

@@ -6,8 +6,10 @@ import string
 import time
 import threading
 import platform
+import base64
+import re
 from datetime import datetime
-from flask import Flask, request, render_template_string, send_file, jsonify, redirect, url_for, session
+from flask import Flask, request, render_template_string, send_file, jsonify, redirect, url_for, session, make_response
 
 app = Flask(__name__)
 app.secret_key = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
@@ -16,6 +18,7 @@ FLAG = ""
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
 BACKUP_FLAG = ""
+SECRET_KEY = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
 current_stage = "fix"
 
@@ -31,7 +34,6 @@ vulnerabilities = {
 ip_whitelist = []
 access_log = []
 attack_log = []
-
 request_counts = {}
 
 DOS_THRESHOLD = 100
@@ -99,134 +101,302 @@ def before_request():
 @app.route('/')
 def index():
     return render_template_string("""
+    <!DOCTYPE html>
     <html>
-    <head><title>CTF靶机</title></head>
+    <head>
+        <title>企业内部管理系统</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+            .menu { margin-top: 20px; }
+            .menu a { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; }
+            .menu a:hover { background: #0056b3; }
+        </style>
+    </head>
     <body>
-    <h1>欢迎来到CTF靶机</h1>
-    <p>这是一个包含多种漏洞的靶机系统</p>
-    <ul>
-        <li><a href="/login">管理员登录</a></li>
-        <li><a href="/read_file">文件读取</a></li>
-        <li><a href="/search">搜索</a></li>
-        <li><a href="/template">模板测试</a></li>
-    </ul>
+        <div class="container">
+            <h1>企业内部管理系统 v2.0</h1>
+            <p>欢迎使用企业内部管理平台</p>
+            <div class="menu">
+                <a href="/auth">用户认证</a>
+                <a href="/documents">文档管理</a>
+                <a href="/search">数据搜索</a>
+                <a href="/profile">个人中心</a>
+                <a href="/api/status">系统状态</a>
+            </div>
+        </div>
     </body>
     </html>
     """)
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if not vulnerabilities["weak_password"]:
-        return "该漏洞已被修复", 403
-    
+@app.route('/auth', methods=['GET', 'POST'])
+def auth():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        token = request.form.get('token', '')
         
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['logged_in'] = True
-            return render_template_string(f"""
-            <html>
-            <head><title>管理员后台</title></head>
-            <body>
-            <h1>欢迎管理员！</h1>
-            <p>备用FLAG: {BACKUP_FLAG}</p>
-            </body>
-            </html>
-            """)
+        if vulnerabilities["weak_password"]:
+            if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                session['logged_in'] = True
+                encoded = base64.b64encode(f"{username}:{SECRET_KEY}".encode()).decode()
+                session['token'] = encoded
+                return redirect('/dashboard')
+            else:
+                if token:
+                    try:
+                        decoded = base64.b64decode(token).decode()
+                        if ':' in decoded:
+                            parts = decoded.split(':')
+                            if len(parts) >= 2:
+                                if parts[1] == SECRET_KEY:
+                                    session['logged_in'] = True
+                                    session['token'] = token
+                                    return redirect('/dashboard')
+                    except:
+                        pass
+                return render_template_string("""
+                <html>
+                <head><title>登录失败</title></head>
+                <body>
+                <div style="text-align:center;margin-top:50px;">
+                    <h2>登录失败</h2>
+                    <p>用户名或密码错误</p>
+                    <a href="/auth">返回登录</a>
+                </div>
+                </body>
+                </html>
+                """)
         else:
+            if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                session['logged_in'] = True
+                return redirect('/dashboard')
             return "登录失败", 401
     else:
         return render_template_string("""
         <html>
-        <head><title>管理员登录</title></head>
+        <head>
+            <title>用户认证</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+                .login-box { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+                button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+            </style>
+        </head>
         <body>
-        <form method="post">
-            <input type="text" name="username" placeholder="用户名"><br>
-            <input type="password" name="password" placeholder="密码"><br>
-            <input type="submit" value="登录">
-        </form>
+            <div class="login-box">
+                <h2>用户登录</h2>
+                <form method="post">
+                    <input type="text" name="username" placeholder="用户名" required>
+                    <input type="password" name="password" placeholder="密码" required>
+                    <input type="hidden" name="token" id="token">
+                    <button type="submit">登录</button>
+                </form>
+                <script>
+                    function generateToken() {
+                        var user = document.querySelector('input[name="username"]').value;
+                        if (user) {
+                            var token = btoa(user + ':guess_secret');
+                            document.getElementById('token').value = token;
+                        }
+                    }
+                    document.querySelector('input[name="username"]').addEventListener('change', generateToken);
+                </script>
+            </div>
         </body>
         </html>
         """)
 
-@app.route('/read_file')
-def read_file():
-    if not vulnerabilities["file_read"]:
-        return "该漏洞已被修复", 403
+@app.route('/dashboard')
+def dashboard():
+    if not session.get('logged_in'):
+        return redirect('/auth')
     
-    filename = request.args.get('file')
-    if filename:
-        try:
-            return send_file(filename)
-        except:
-            return "文件读取失败", 404
     return render_template_string("""
     <html>
-    <head><title>文件读取</title></head>
+    <head>
+        <title>管理后台</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .dashboard { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+            .flag-box { background: #e8f5e9; padding: 20px; border-radius: 4px; margin-top: 20px; }
+        </style>
+    </head>
     <body>
-    <form>
-        <input type="text" name="file" placeholder="文件名"><br>
-        <input type="submit" value="读取">
-    </form>
+        <div class="dashboard">
+            <h1>管理后台</h1>
+            <p>欢迎来到管理控制台</p>
+            <div class="flag-box">
+                <h3>系统密钥</h3>
+                <p>备用FLAG: """ + (BACKUP_FLAG if vulnerabilities["weak_password"] else "已隐藏") + """</p>
+            </div>
+        </div>
     </body>
     </html>
     """)
+
+@app.route('/documents')
+def documents():
+    doc = request.args.get('doc', '')
+    
+    if vulnerabilities["file_read"]:
+        if doc:
+            try:
+                normalized = os.path.normpath(doc)
+                if '..' not in normalized:
+                    safe_path = os.path.join('./docs', normalized)
+                else:
+                    encoded = doc.replace('../', '__')
+                    decoded = encoded.replace('__', '../')
+                    safe_path = decoded
+                
+                if os.path.exists(safe_path):
+                    return send_file(safe_path)
+            except Exception as e:
+                pass
+        return render_template_string("""
+        <html>
+        <head><title>文档管理</title></head>
+        <body>
+        <div style="max-width:600px;margin:50px auto;">
+            <h2>文档管理</h2>
+            <form>
+                <input type="text" name="doc" placeholder="文档路径" style="width:300px;">
+                <button type="submit">查看文档</button>
+            </form>
+            <p style="color:#666;font-size:12px;">提示：文档位于 ./docs/ 目录下</p>
+        </div>
+        </body>
+        </html>
+        """)
+    else:
+        return "文档功能已关闭", 403
 
 @app.route('/search')
 def search():
-    if not vulnerabilities["xss"]:
-        return "该漏洞已被修复", 403
-    
     query = request.args.get('q', '')
-    return render_template_string(f"""
+    results = []
+    
+    if vulnerabilities["xss"]:
+        if query:
+            keywords = ['admin', 'flag', 'secret', 'password']
+            for kw in keywords:
+                if kw in query.lower():
+                    results.append(f"找到相关结果: {kw}")
+    else:
+        if query:
+            query = query.replace('<', '&lt;').replace('>', '&gt;')
+    
+    return render_template_string("""
     <html>
-    <head><title>搜索</title></head>
+    <head>
+        <title>数据搜索</title>
+        <script>
+            function displayResults() {
+                var query = document.getElementById('search-input').value;
+                var resultDiv = document.getElementById('results');
+                resultDiv.innerHTML = '搜索结果: ' + query;
+            }
+        </script>
+    </head>
     <body>
-    <form>
-        <input type="text" name="q" placeholder="搜索关键词"><br>
-        <input type="submit" value="搜索">
-    </form>
-    <p>搜索结果: {query}</p>
+        <div style="max-width:600px;margin:50px auto;">
+            <h2>数据搜索</h2>
+            <input type="text" id="search-input" name="q" value="""" + query + """">
+            <button onclick="displayResults()">搜索</button>
+            <div id="results">""" + ''.join(results) + """</div>
+        </div>
     </body>
     </html>
     """)
 
-@app.route('/template')
-def template():
-    if not vulnerabilities["ssti"]:
-        return "该漏洞已被修复", 403
+@app.route('/profile')
+def profile():
+    user = request.args.get('user', 'guest')
     
-    name = request.args.get('name', 'Guest')
-    return render_template_string(f"""
-    <html>
-    <head><title>模板测试</title></head>
-    <body>
-    <h1>Hello, {name}!</h1>
-    </body>
-    </html>
-    """)
+    if vulnerabilities["ssti"]:
+        return render_template_string("""
+        <html>
+        <head><title>个人中心</title></head>
+        <body>
+        <div style="max-width:600px;margin:50px auto;">
+            <h2>欢迎, """ + user + """</h2>
+            <p>这是您的个人资料页面</p>
+        </div>
+        </body>
+        </html>
+        """)
+    else:
+        return render_template_string("""
+        <html>
+        <head><title>个人中心</title></head>
+        <body>
+        <div style="max-width:600px;margin:50px auto;">
+            <h2>欢迎, {{ user }}</h2>
+            <p>这是您的个人资料页面</p>
+        </div>
+        </body>
+        </html>
+        """, user=user)
 
-@app.route('/headache')
-def headache():
-    if not vulnerabilities["headache"]:
-        return "该漏洞已被修复", 403
+@app.route('/api/status')
+def api_status():
+    header_name = request.headers.get('X-Status-Check', '')
     
-    custom_header = request.headers.get('X-Custom-Flag')
-    if custom_header:
-        return f"自定义请求头内容: {custom_header}", 200
-    
-    return "请在请求头中添加 X-Custom-Flag", 400
+    if vulnerabilities["headache"]:
+        if header_name:
+            if header_name == 'SECRET_CHECK':
+                secret_value = request.headers.get('X-Secret-Value', '')
+                if secret_value:
+                    if secret_value == 'FLAG_REVEAL':
+                        return jsonify({"status": "ok", "flag": FLAG})
+                    else:
+                        try:
+                            decoded = base64.b64decode(secret_value).decode()
+                            if decoded.startswith('get_flag:'):
+                                return jsonify({"status": "ok", "flag": FLAG})
+                        except:
+                            pass
+            return jsonify({"status": "checked", "received": header_name})
+    return jsonify({"status": "running", "version": "2.0"})
 
-@app.route('/flag')
-def get_flag():
+@app.route('/api/flag')
+def api_flag():
     return FLAG, 200
 
-@app.route('/backup_flag')
-def get_backup_flag():
+@app.route('/api/backup_flag')
+def api_backup_flag():
     if session.get('logged_in'):
         return BACKUP_FLAG, 200
     return "未授权访问", 401
+
+@app.route('/csp-test')
+def csp_test():
+    if vulnerabilities["csp"]:
+        resp = make_response("""
+        <html>
+        <head>
+            <title>CSP测试</title>
+            <script src="https://api.example.com/data?callback=processData"></script>
+        </head>
+        <body>
+            <div id="content"></div>
+            <script>
+                function processData(data) {
+                    document.getElementById('content').innerHTML = data.message;
+                }
+            </script>
+        </body>
+        </html>
+        """)
+        resp.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'"
+        return resp
+    else:
+        resp = make_response("CSP已加固")
+        resp.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'"
+        return resp
 
 @app.route('/harden/change_password', methods=['POST'])
 def change_password():
@@ -296,8 +466,6 @@ def set_stage():
 def get_hash():
     files_to_hash = [
         __file__,
-        "./vulnerabilities/__init__.py",
-        "./加固/__init__.py",
         "./config/client_config.py"
     ]
     
@@ -314,6 +482,10 @@ def start_server(port=8000):
     FLAG = generate_flag()
     BACKUP_FLAG = generate_flag()
     save_flag()
+    
+    os.makedirs("./docs", exist_ok=True)
+    with open("./docs/readme.txt", "w") as f:
+        f.write("欢迎使用文档管理系统\n")
     
     print(f"靶机服务启动，监听端口: {port}")
     print(f"主FLAG: {FLAG}")

@@ -36,6 +36,9 @@ class AntiCheatSystem:
         }
         self.violation_log.append(violation)
         
+        if len(self.violation_log) > 1000:
+            self.violation_log.pop(0)
+        
         violation_log_file = os.path.join("./logs", "violations.log")
         with open(violation_log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(violation, ensure_ascii=False) + "\n")

@@ -37,6 +37,12 @@ class HeartbeatClient:
         print(log_entry.strip())
     
     def connect(self):
+        if self.socket:
+            try:
+                self.socket.close()
+            except:
+                pass
+        
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(10)
         
@@ -120,7 +126,10 @@ class HeartbeatClient:
     def stop(self):
         self.running = False
         if self.socket:
-            self.socket.close()
+            try:
+                self.socket.close()
+            except:
+                pass
         self.log("心跳客户端已停止")
     
     def set_backup_ip(self, backup_ip):

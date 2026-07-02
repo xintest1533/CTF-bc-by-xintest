@@ -46,11 +46,13 @@ class HeartbeatServer:
         self.lock = threading.Lock()
         self.server_socket = None
         self.running = False
+        self._buffer_size = 4096
     
     def handle_client(self, client_socket, client_address):
+        client_socket.settimeout(60)
         try:
             while self.running:
-                data = client_socket.recv(1024)
+                data = client_socket.recv(self._buffer_size)
                 if not data:
                     break
                 
@@ -74,6 +76,8 @@ class HeartbeatServer:
                 
                 time.sleep(config.HEARTBEAT_INTERVAL)
                 
+        except socket.timeout:
+            log_event("error", f"客户端超时: {client_address}")
         except Exception as e:
             log_event("error", f"客户端处理异常: {client_address}, {str(e)}")
         finally:
@@ -83,7 +87,7 @@ class HeartbeatServer:
         while self.running:
             time.sleep(1)
             with self.lock:
-                for player in self.players.values():
+                for player in list(self.players.values()):
                     player.check_timeout()
     
     def start(self):
@@ -92,7 +96,8 @@ class HeartbeatServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((config.JUDGE_TCP_ADDRESSES[0], config.TCP_HEARTBEAT_PORT))
-        self.server_socket.listen(100)
+        self.server_socket.listen(200)
+        self.server_socket.settimeout(1.0)
         
         log_event("server", f"TCP心跳服务启动于 {config.JUDGE_TCP_ADDRESSES[0]}:{config.TCP_HEARTBEAT_PORT}")
         
@@ -104,6 +109,8 @@ class HeartbeatServer:
                 client_socket, client_address = self.server_socket.accept()
                 client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_address), daemon=True)
                 client_thread.start()
+            except socket.timeout:
+                continue
             except Exception as e:
                 if self.running:
                     log_event("error", f"接受连接异常: {str(e)}")

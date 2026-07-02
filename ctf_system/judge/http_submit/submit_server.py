@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from functools import lru_cache
 
 from judge.config.judge_config import config
 
@@ -64,6 +65,9 @@ def log_submission(event_type, message):
         "message": message
     }
     submission_log.append(log_entry)
+    
+    if len(submission_log) > 10000:
+        submission_log.pop(0)
     
     log_file = os.path.join(config.LOG_DIR, "submission.log")
     with open(log_file, "a", encoding="utf-8") as f:
@@ -188,4 +192,4 @@ def status():
 
 if __name__ == "__main__":
     flags = load_flags()
-    app.run(host=config.JUDGE_HTTP_ADDRESS, port=config.HTTP_SUBMIT_PORT, debug=False)
+    app.run(host=config.JUDGE_HTTP_ADDRESS, port=config.HTTP_SUBMIT_PORT, debug=False, threaded=True)

@@ -40,6 +40,8 @@ class GameController:
         
         self.log_file = os.path.join("./logs", "game_controller.log")
         os.makedirs("./logs", exist_ok=True)
+        
+        self._last_warning_minute = -1
     
     def log(self, message):
         timestamp = datetime.now().isoformat()
@@ -51,6 +53,7 @@ class GameController:
     def add_player(self, player_id, primary_ip, os_type="unknown"):
         if player_id not in self.players:
             self.players[player_id] = {
+                "player_id": player_id,
                 "primary_ip": primary_ip,
                 "os_type": os_type,
                 "status": "online",
@@ -112,6 +115,7 @@ class GameController:
         if new_stage in GameStage:
             self.current_stage = new_stage
             self.stage_start_time = datetime.now()
+            self._last_warning_minute = -1
             
             self.log(f"阶段切换: {self.get_stage_name()}")
             self.broadcast(f"阶段切换: {self.get_stage_name()}")
@@ -123,17 +127,20 @@ class GameController:
         remaining = self.get_stage_remaining_time()
         minutes_remaining = int(remaining.total_seconds() / 60)
         
-        if minutes_remaining == 5:
-            self.log("距离阶段切换还有5分钟")
-            self.broadcast("警告：距离阶段切换还有5分钟！")
-            for callback in self.warning_callbacks:
-                callback(5)
-        
-        elif minutes_remaining == 1:
-            self.log("距离阶段切换还有1分钟")
-            self.broadcast("警告：距离阶段切换还有1分钟！")
-            for callback in self.warning_callbacks:
-                callback(1)
+        if minutes_remaining != self._last_warning_minute:
+            self._last_warning_minute = minutes_remaining
+            
+            if minutes_remaining == 5:
+                self.log("距离阶段切换还有5分钟")
+                self.broadcast("警告：距离阶段切换还有5分钟！")
+                for callback in self.warning_callbacks:
+                    callback(5)
+            
+            elif minutes_remaining == 1:
+                self.log("距离阶段切换还有1分钟")
+                self.broadcast("警告：距离阶段切换还有1分钟！")
+                for callback in self.warning_callbacks:
+                    callback(1)
     
     def run(self):
         self.running = True
@@ -206,44 +213,27 @@ class GameController:
         self.stage_change_callbacks.append(callback)
     
     def calculate_rankings(self):
-        survivors = [p for p in self.players.values() if not p["eliminated"]]
+        survivors = []
+        eliminated_list = []
         
-        if not survivors:
-            eliminated = sorted(self.eliminated_players.values(), 
-                               key=lambda x: x["elimination_time"] or "", reverse=True)
-            return eliminated
+        for player in self.players.values():
+            if player["eliminated"]:
+                eliminated_list.append(player)
+            else:
+                captured_count = len(player["flag_captured"])
+                fixed_count = len(player["vulnerabilities_fixed"])
+                score = captured_count * 10 + fixed_count
+                survivors.append({
+                    "player_id": player["player_id"],
+                    "primary_ip": player["primary_ip"],
+                    "os_type": player["os_type"],
+                    "status": "survivor",
+                    "flags_captured": captured_count,
+                    "vulnerabilities_fixed": fixed_count,
+                    "score": score
+                })
         
-        rankings = []
+        survivors.sort(key=lambda x: x["score"], reverse=True)
+        eliminated_list.sort(key=lambda x: x["elimination_time"] or "", reverse=True)
         
-        for player in survivors:
-            captured_count = len(player["flag_captured"])
-            fixed_count = len(player["vulnerabilities_fixed"])
-            
-            score = captured_count * 10 + fixed_count
-            
-            rankings.append({
-                "player_id": player["player_id"],
-                "primary_ip": player["primary_ip"],
-                "os_type": player["os_type"],
-                "status": "survivor",
-                "flags_captured": captured_count,
-                "vulnerabilities_fixed": fixed_count,
-                "score": score
-            })
-        
-        rankings.sort(key=lambda x: x["score"], reverse=True)
-        
-        eliminated = sorted(self.eliminated_players.values(),
-                           key=lambda x: x["elimination_time"] or "", reverse=True)
-        
-        for player in eliminated:
-            rankings.append({
-                "player_id": player["player_id"],
-                "primary_ip": player["primary_ip"],
-                "os_type": player["os_type"],
-                "status": "eliminated",
-                "elimination_reason": player["elimination_reason"],
-                "elimination_time": player["elimination_time"]
-            })
-        
-        return rankings
+        return survivors + eliminated_list
