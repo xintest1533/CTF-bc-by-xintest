@@ -119,7 +119,7 @@ python run_client.py
 
 ## 比赛流程
 
-### 第一阶段：修复调试期（30分钟）
+### 第一阶段：修复调试期（2小时）
 
 允许操作：
 - 修改靶机源码
@@ -158,74 +158,88 @@ python run_client.py
 
 ## 漏洞说明
 
-靶机内置6类漏洞，需在修复期发现并修复：
+靶机为企业内部管理系统，共2000+行代码，内置7类漏洞，需在修复期（2小时）发现并修复：
 
-### 1. HEADache请求头漏洞
+### 漏洞一：SQL注入漏洞
 
-位置：`/api/status`
+位置：`/documents?search=`
 
-特征：通过特定请求头获取系统敏感信息
+触发点：文档搜索功能的search参数直接拼接SQL查询
 
-修复接口：`POST /harden/disable_vulnerability`
-```json
-{"vulnerability": "headache"}
-```
+特征：通过构造恶意搜索语句，可绕过查询限制获取数据库全部数据
 
-### 2. 弱密码登录漏洞
+难度：★★★☆☆
 
-位置：`/auth`
+### 漏洞二：任意文件上传漏洞
 
-特征：默认账号密码 admin/admin123，登录后可获取备用FLAG
+位置：`/files/upload`
 
-修复方式：修改密码
-```json
-POST /harden/change_password
-{"new_password": "your_new_password"}
-```
+触发点：文件上传功能未校验文件类型和扩展名
 
-### 3. 任意文件读取漏洞
+特征：可上传任意类型文件（包括.php、.py等可执行文件），上传路径可预测
 
-位置：`/documents`
+难度：★★☆☆☆
 
-特征：可读取系统任意文件
+### 漏洞三：命令执行漏洞
 
-修复接口：`POST /harden/disable_vulnerability`
-```json
-{"vulnerability": "file_read"}
-```
+位置：`/admin/system_info`
 
-### 4. 反射型XSS漏洞
+触发点：系统信息页面的cmd参数直接传入shell执行
 
-位置：`/search`
+特征：管理员可执行任意系统命令，获取服务器完全控制权
 
-特征：搜索关键词未过滤，可执行恶意脚本
+难度：★★★☆☆
 
-修复接口：`POST /harden/disable_vulnerability`
-```json
-{"vulnerability": "xss"}
-```
+### 漏洞四：反序列化漏洞
 
-### 5. SSTI模板注入漏洞
+位置：`/admin/import`
 
-位置：`/profile`
+触发点：数据导入功能使用pickle反序列化用户上传文件
 
-特征：用户输入直接渲染到模板中
+特征：上传恶意构造的.pkl文件，可在服务器执行任意代码
 
-修复接口：`POST /harden/disable_vulnerability`
-```json
-{"vulnerability": "ssti"}
-```
+难度：★★★★☆
 
-### 6. CSP策略漏洞
+### 漏洞五：SSRF服务端请求伪造
 
-位置：`/csp-test`
+位置：`/api/proxy`
 
-特征：CSP策略配置不当，允许不安全的脚本执行
+触发点：API代理功能的url参数由用户控制
 
-修复接口：`POST /harden/disable_vulnerability`
-```json
-{"vulnerability": "csp"}
-```
+特征：可利用服务器发起内网请求，探测内网服务，读取本地文件
+
+难度：★★★☆☆
+
+### 漏洞六：越权访问（IDOR）
+
+位置：`/documents/<id>`
+
+触发点：文档详情页未校验文档归属权
+
+特征：普通用户可遍历文档ID，访问其他用户的私有文档
+
+难度：★★☆☆☆
+
+### 漏洞七：敏感信息泄露
+
+位置：`/debug/info?debug=1`
+
+触发点：调试接口未禁用，传入debug=1参数可触发
+
+特征：泄露FLAG、SECRET_KEY、数据库路径、环境变量等敏感信息
+
+难度：★☆☆☆☆
+
+## 默认账号
+
+| 账号 | 密码 | 角色 |
+|------|------|------|
+| admin | admin123 | 管理员 |
+| user1 | password1 | 普通用户 |
+| user2 | password2 | 普通用户 |
+| ... | ... | ... |
+
+管理员账号可访问管理后台，包含系统信息、数据导入等高危功能。
 
 ## FLAG提交
 
@@ -367,6 +381,35 @@ TCP心跳和HTTP提交分离解耦，单一进程崩溃不影响另一服务。
 3. 选手之间通过内网IP+端口互相访问
 4. 源码哈希在校验期和攻击期会被裁判校验
 5. 仅允许修改密码和配置类文件
+
+## 源码获取
+
+### Gitee镜像地址
+
+```
+https://gitee.com/ctf-platform/ctf-attack-defense-system.git
+```
+
+### 克隆指令
+
+```bash
+git clone https://gitee.com/ctf-platform/ctf-attack-defense-system.git
+cd ctf-attack-defense-system
+```
+
+### 版本信息
+
+| 版本 | 代码行数 | 漏洞数 | 准备时间 | 发布日期 |
+|------|---------|--------|---------|---------|
+| v3.1 | 2182行 | 7个 | 2小时 | 2024-01 |
+| v3.0 | 1560行 | 6个 | 30分钟 | 2024-01 |
+
+### 本地构建
+
+```bash
+pip install -r requirements.txt
+python target_server.py
+```
 
 ## 许可证
 

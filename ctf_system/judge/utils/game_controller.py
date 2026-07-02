@@ -16,7 +16,7 @@ class GameController:
         self.current_stage = GameStage.FIX
         self.stage_start_time = datetime.now()
         
-        self.fix_duration = timedelta(minutes=30)
+        self.fix_duration = timedelta(hours=2)
         self.stabilize_duration = timedelta(minutes=5)
         self.attack_duration = timedelta(minutes=60)
         
