@@ -3,6 +3,8 @@ echo "================================================"
 echo "CTF赛事 - 启动裁判服务"
 echo "================================================"
 
+mkdir -p judge/logs
+
 echo "正在启动TCP心跳服务..."
 python3 judge/tcp_heartbeat/heartbeat_server.py &
 HEARTBEAT_PID=$!
