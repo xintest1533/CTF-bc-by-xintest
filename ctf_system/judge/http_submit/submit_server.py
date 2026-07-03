@@ -1,13 +1,16 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import time
-import os
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from functools import lru_cache
 
-from judge.config.judge_config import config
+from config.judge_config import config
 
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app)

@@ -1,11 +1,14 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import socket
 import threading
 import json
 import time
-import os
 from datetime import datetime
 
-from judge.config.judge_config import config
+from config.judge_config import config
 
 class PlayerState:
     def __init__(self, player_id, primary_ip, os_type="unknown"):
