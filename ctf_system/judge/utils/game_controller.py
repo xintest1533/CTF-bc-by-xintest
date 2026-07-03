@@ -1,13 +1,14 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 import threading
 import json
-import os
-import sys
 from datetime import datetime, timedelta
 from enum import Enum
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-from judge.config.judge_config import config as judge_config
+from config.judge_config import config as judge_config
 
 class GameStage(Enum):
     FIX = "fix"

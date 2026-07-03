@@ -11,7 +11,7 @@ class HeartbeatClient:
         self.player_id = player_id
         self.primary_ip = primary_ip
         self.backup_ip = ""
-        self.judge_addresses = judge_addresses
+        self.judge_addresses = judge_addresses if isinstance(judge_addresses, list) else [judge_addresses]
         self.judge_port = judge_port
         self.interval = interval
         
@@ -27,13 +27,16 @@ class HeartbeatClient:
         self.os_type = platform.system()
         
         self.log_file = os.path.join("./logs", "heartbeat.log")
-        os.makedirs("./logs", exist_ok=True)
+        os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
     
     def log(self, message):
         timestamp = datetime.now().isoformat()
         log_entry = f"[{timestamp}] {message}\n"
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(log_entry)
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(log_entry)
+        except Exception as e:
+            print(f"日志写入失败: {str(e)}")
         print(log_entry.strip())
     
     def connect(self):
@@ -45,8 +48,9 @@ class HeartbeatClient:
         
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(10)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
-        for _ in range(len(self.judge_addresses)):
+        for attempt in range(len(self.judge_addresses)):
             judge_addr = self.judge_addresses[self.current_judge_index]
             try:
                 self.socket.connect((judge_addr, self.judge_port))
@@ -57,6 +61,7 @@ class HeartbeatClient:
             except Exception as e:
                 self.log(f"连接失败: {judge_addr}:{self.judge_port}, 错误: {str(e)}")
                 self.current_judge_index = (self.current_judge_index + 1) % len(self.judge_addresses)
+                time.sleep(1)
         
         self.connection_status = "disconnected"
         return False
@@ -72,6 +77,9 @@ class HeartbeatClient:
             if self.socket:
                 self.socket.sendall(json.dumps(heartbeat_data).encode('utf-8'))
                 return True
+        except ConnectionResetError:
+            self.log("连接被重置")
+            self.connection_status = "disconnected"
         except Exception as e:
             self.log(f"发送心跳失败: {str(e)}")
         
@@ -85,7 +93,7 @@ class HeartbeatClient:
         
         self.last_reconnect_time = now
         
-        if not self.has_revive_chance and self.reconnect_count >= 1:
+        if not self.has_revive_chance and self.reconnect_count >= 3:
             self.log("已使用复活机会，无法继续重连")
             return False
         
@@ -122,6 +130,7 @@ class HeartbeatClient:
             except Exception as e:
                 self.log(f"心跳线程异常: {str(e)}")
                 self.connection_status = "disconnected"
+                time.sleep(2)
     
     def stop(self):
         self.running = False
@@ -153,3 +162,12 @@ class HeartbeatClient:
             self.log("使用复活机会，重置断线倒计时")
             return True
         return False
+    
+    def get_status(self):
+        return {
+            "player_id": self.player_id,
+            "current_ip": self.current_ip,
+            "connection_status": self.connection_status,
+            "reconnect_count": self.reconnect_count,
+            "has_revive_chance": self.has_revive_chance
+        }

@@ -29,14 +29,21 @@ stage_timers = {
 def load_flags():
     flags_file = os.path.join(config.DATA_DIR, "flags.json")
     if os.path.exists(flags_file):
-        with open(flags_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(flags_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_flags():
     flags_file = os.path.join(config.DATA_DIR, "flags.json")
-    with open(flags_file, "w", encoding="utf-8") as f:
-        json.dump(flags, f, indent=2)
+    try:
+        os.makedirs(os.path.dirname(flags_file), exist_ok=True)
+        with open(flags_file, "w", encoding="utf-8") as f:
+            json.dump(flags, f, indent=2)
+    except Exception as e:
+        log_submission("error", f"保存FLAG失败: {str(e)}")
 
 def register_player(player_id, flag):
     flags[player_id] = {
@@ -73,8 +80,12 @@ def log_submission(event_type, message):
         submission_log.pop(0)
     
     log_file = os.path.join(config.LOG_DIR, "submission.log")
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+    try:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"日志写入失败: {str(e)}")
 
 @app.route('/submit_flag', methods=['POST'])
 @limiter.limit(f"{config.FLAG_SUBMIT_RATE_LIMIT} per {config.FLAG_SUBMIT_TIME_WINDOW} seconds")
@@ -89,6 +100,12 @@ def submit_flag():
     
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "无效的JSON数据"
+            }), 400
+        
         attacker_id = data.get('attacker_id')
         target_id = data.get('target_id')
         flag = data.get('flag')
@@ -96,7 +113,7 @@ def submit_flag():
         if not all([attacker_id, target_id, flag]):
             return jsonify({
                 "success": False,
-                "message": "缺少必要参数"
+                "message": "缺少必要参数（attacker_id, target_id, flag）"
             }), 400
         
         if attacker_id == target_id:
@@ -148,11 +165,14 @@ def submit_flag():
 def register():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "无效的JSON数据"}), 400
+        
         player_id = data.get('player_id')
         flag = data.get('flag')
         
         if not player_id or not flag:
-            return jsonify({"success": False, "message": "缺少必要参数"}), 400
+            return jsonify({"success": False, "message": "缺少必要参数（player_id, flag）"}), 400
         
         if player_id in flags:
             return jsonify({"success": False, "message": "选手已注册"}), 409
@@ -177,13 +197,20 @@ def stage():
             "timers": stage_timers
         })
     else:
-        data = request.get_json()
-        new_stage = data.get('stage')
-        if new_stage in ["fix", "stabilize", "attack"]:
-            current_stage = new_stage
-            log_submission("stage_change", f"阶段切换: {new_stage}")
-            return jsonify({"success": True, "message": f"阶段已切换至: {new_stage}"})
-        return jsonify({"success": False, "message": "无效阶段"}), 400
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "message": "无效的JSON数据"}), 400
+            
+            new_stage = data.get('stage')
+            if new_stage in ["fix", "stabilize", "attack", "finished"]:
+                current_stage = new_stage
+                log_submission("stage_change", f"阶段切换: {new_stage}")
+                return jsonify({"success": True, "message": f"阶段已切换至: {new_stage}"})
+            return jsonify({"success": False, "message": "无效阶段"}), 400
+        except Exception as e:
+            log_submission("error", f"阶段切换异常: {str(e)}")
+            return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 @app.route('/status', methods=['GET'])
 def status():
@@ -193,6 +220,27 @@ def status():
         "submissions_count": len(submission_log)
     })
 
+@app.route('/players', methods=['GET'])
+def players():
+    return jsonify({
+        "players": [{"player_id": pid, "eliminated": data["eliminated"]} for pid, data in flags.items()]
+    })
+
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"success": False, "message": "未找到接口"}), 404
+
+@app.errorhandler(429)
+def rate_limit_exceeded(error):
+    return jsonify({"success": False, "message": "请求过于频繁，请稍后重试"}), 429
+
 if __name__ == "__main__":
     flags = load_flags()
-    app.run(host=config.JUDGE_HTTP_ADDRESS, port=config.HTTP_SUBMIT_PORT, debug=False, threaded=True)
+    try:
+        app.run(host=config.JUDGE_HTTP_ADDRESS, port=config.HTTP_SUBMIT_PORT, debug=False, threaded=True)
+    except Exception as e:
+        log_submission("error", f"服务启动失败: {str(e)}")

@@ -50,16 +50,20 @@ class HeartbeatServer:
         self.server_socket = None
         self.running = False
         self._buffer_size = 4096
+        self._connection_count = 0
+        self._max_connections = 200
     
     def handle_client(self, client_socket, client_address):
         client_socket.settimeout(60)
+        client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        
         try:
             while self.running:
-                data = client_socket.recv(self._buffer_size)
-                if not data:
-                    break
-                
                 try:
+                    data = client_socket.recv(self._buffer_size)
+                    if not data:
+                        break
+                    
                     heartbeat_data = json.loads(data.decode('utf-8'))
                     player_id = heartbeat_data.get('player_id')
                     primary_ip = heartbeat_data.get('primary_ip')
@@ -68,23 +72,34 @@ class HeartbeatServer:
                     with self.lock:
                         if player_id not in self.players:
                             self.players[player_id] = PlayerState(player_id, primary_ip, os_type)
+                            self._connection_count += 1
                             log_event("connection", f"新选手连接: {player_id} ({primary_ip}, {os_type})")
                         
                         player = self.players[player_id]
                         player.primary_ip = primary_ip
                         player.update_heartbeat()
-                        
+                    
                 except json.JSONDecodeError:
                     log_event("error", f"无效心跳数据: {client_address}")
+                except socket.timeout:
+                    log_event("warning", f"客户端读取超时: {client_address}")
+                    break
                 
                 time.sleep(config.HEARTBEAT_INTERVAL)
                 
         except socket.timeout:
             log_event("error", f"客户端超时: {client_address}")
+        except ConnectionResetError:
+            log_event("warning", f"客户端连接重置: {client_address}")
         except Exception as e:
             log_event("error", f"客户端处理异常: {client_address}, {str(e)}")
         finally:
             client_socket.close()
+            with self.lock:
+                for pid, player in list(self.players.items()):
+                    if player.primary_ip == client_address[0]:
+                        player.status = "disconnected"
+                        log_event("disconnection", f"选手 {pid} 断开连接")
     
     def check_timeouts(self):
         while self.running:
@@ -98,11 +113,18 @@ class HeartbeatServer:
         
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind((config.JUDGE_TCP_ADDRESSES[0], config.TCP_HEARTBEAT_PORT))
-        self.server_socket.listen(200)
-        self.server_socket.settimeout(1.0)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
-        log_event("server", f"TCP心跳服务启动于 {config.JUDGE_TCP_ADDRESSES[0]}:{config.TCP_HEARTBEAT_PORT}")
+        try:
+            self.server_socket.bind((config.JUDGE_TCP_ADDRESSES[0], config.TCP_HEARTBEAT_PORT))
+            self.server_socket.listen(self._max_connections)
+            self.server_socket.settimeout(1.0)
+            
+            log_event("server", f"TCP心跳服务启动于 {config.JUDGE_TCP_ADDRESSES[0]}:{config.TCP_HEARTBEAT_PORT}")
+            log_event("server", f"最大连接数: {self._max_connections}")
+        except Exception as e:
+            log_event("error", f"绑定端口失败: {str(e)}")
+            return
         
         timeout_thread = threading.Thread(target=self.check_timeouts, daemon=True)
         timeout_thread.start()
@@ -121,16 +143,32 @@ class HeartbeatServer:
     def stop(self):
         self.running = False
         if self.server_socket:
-            self.server_socket.close()
+            try:
+                self.server_socket.close()
+            except:
+                pass
         log_event("server", "TCP心跳服务已停止")
+    
+    def get_player_count(self):
+        with self.lock:
+            return len(self.players)
+    
+    def get_online_count(self):
+        with self.lock:
+            return sum(1 for p in self.players.values() if p.status == "online")
 
 def log_event(event_type, message):
     timestamp = datetime.now().isoformat()
     log_entry = f"[{timestamp}] [{event_type}] {message}\n"
     
     log_file = os.path.join(config.LOG_DIR, "heartbeat.log")
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(log_entry)
+    try:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+    except Exception as e:
+        print(f"日志写入失败: {str(e)}")
+    print(log_entry.strip())
 
 if __name__ == "__main__":
     server = HeartbeatServer()
@@ -138,3 +176,5 @@ if __name__ == "__main__":
         server.start()
     except KeyboardInterrupt:
         server.stop()
+    except Exception as e:
+        log_event("error", f"服务启动失败: {str(e)}")

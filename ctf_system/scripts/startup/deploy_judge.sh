@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 RED='\033[0;31m'
@@ -29,21 +28,21 @@ if [ "$(id -u)" != "0" ]; then
     sleep 2
 fi
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
 BASE_DIR="/opt/ctf-attack-defense-system"
-GIT_URL="https://gitee.com/ctf-platform/ctf-attack-defense-system.git"
 
-log "1/6 克隆代码仓库..."
+log "1/6 准备项目目录..."
 if [ -d "$BASE_DIR" ]; then
-    warn "目录已存在，跳过克隆"
+    warn "目录已存在，使用当前目录: $BASE_DIR"
 else
-    git clone "$GIT_URL" "$BASE_DIR" || {
-        error "克隆失败，请检查网络或手动下载后放置到 $BASE_DIR"
-    }
+    ln -s "$PROJECT_ROOT" "$BASE_DIR"
+    log "创建符号链接: $PROJECT_ROOT -> $BASE_DIR"
 fi
 
 log "2/6 安装 Python 依赖..."
-cd "$BASE_DIR"
-pip3 install -r requirements.txt || {
+cd "$PROJECT_ROOT"
+pip3 install -r requirements.txt 2>/dev/null || {
     warn "pip3 安装失败，尝试使用 pip..."
     pip install -r requirements.txt || {
         error "Python 依赖安装失败"
@@ -82,8 +81,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/ctf-attack-defense-system/judge
-ExecStart=/usr/bin/python3 tcp_heartbeat/heartbeat_server.py
+WorkingDirectory=/opt/ctf-attack-defense-system
+ExecStart=/usr/bin/python3 judge/tcp_heartbeat/heartbeat_server.py
 Restart=always
 RestartSec=5
 
@@ -98,8 +97,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/ctf-attack-defense-system/judge
-ExecStart=/usr/bin/python3 http_submit/submit_server.py
+WorkingDirectory=/opt/ctf-attack-defense-system
+ExecStart=/usr/bin/python3 judge/http_submit/submit_server.py
 Restart=always
 RestartSec=5
 
@@ -114,8 +113,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/ctf-attack-defense-system/judge
-ExecStart=/usr/bin/python3 web_dashboard/dashboard.py
+WorkingDirectory=/opt/ctf-attack-defense-system
+ExecStart=/usr/bin/python3 judge/web_dashboard/dashboard.py
 Restart=always
 RestartSec=5
 
@@ -142,7 +141,7 @@ systemctl status ctf-dashboard --no-pager | grep -E "(Active|Loaded)"
 
 echo ""
 echo "---------- 端口监听 ----------"
-ss -tlnp | grep -E '9999|8080|8000' || netstat -tlnp | grep -E '9999|8080|8000'
+ss -tlnp | grep -E '9999|8080|8000' || netstat -tlnp | grep -E '9999|8080|8000' || echo "端口状态检查失败"
 
 echo ""
 log "====================================="
