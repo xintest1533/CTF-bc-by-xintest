@@ -49,6 +49,24 @@ pip install -r requirements.txt
 
 ### 2. 启动裁判服务
 
+**方式一：一键部署（推荐）**
+
+```bash
+# 下载并执行一键部署脚本
+wget https://gitee.com/ctf-platform/ctf-attack-defense-system/raw/master/scripts/startup/deploy_judge.sh -O deploy.sh
+sudo chmod +x deploy.sh
+sudo ./deploy.sh
+```
+
+脚本会自动完成：
+- 克隆代码到 `/opt/ctf-attack-defense-system`
+- 安装 Python 依赖
+- 配置防火墙（firewalld/ufw/iptables）
+- 创建 systemd 服务并开机自启
+- 验证服务状态
+
+**方式二：手动启动**
+
 ```bash
 # 方式一：分别启动
 python judge/tcp_heartbeat/heartbeat_server.py &
