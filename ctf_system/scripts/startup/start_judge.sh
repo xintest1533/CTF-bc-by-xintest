@@ -10,6 +10,15 @@ echo "================================================"
 echo "项目目录: $PROJECT_ROOT"
 echo ""
 
+echo "检查更新..."
+cd "$PROJECT_ROOT"
+if git fetch origin master 2>/dev/null && [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/master)" ]; then
+    echo "发现新版本，自动更新中..."
+    bash "$SCRIPT_DIR/update.sh"
+else
+    echo "当前已是最新版本"
+fi
+
 mkdir -p "$PROJECT_ROOT/judge/logs"
 
 echo "正在启动TCP心跳服务..."
