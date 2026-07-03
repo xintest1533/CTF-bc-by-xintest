@@ -303,6 +303,18 @@ curl http://localhost:8000/logs/attack
 
 ## 配置说明
 
+### 自定义比赛阶段时长
+
+编辑 `judge/config/judge_config.py`，修改以下字段：
+
+```python
+FIX_PERIOD_MINUTES = 120        # 修复调试期（分钟），默认120分钟（2小时）
+STABILIZE_PERIOD_MINUTES = 5    # 稳定校验期（分钟），默认5分钟
+ATTACK_PERIOD_MINUTES = 60      # 自由攻防期（分钟），默认60分钟
+```
+
+修改后重启裁判服务即可生效。
+
 ### ip_config.ini
 
 ```ini
@@ -316,18 +328,26 @@ backup_ip = 备用内网IP（可选）
 - 仅primary_ip：正常运行
 - 双IP齐全：断线时自动切换备用IP
 
-### judge_config.py
+### judge_config.py 完整配置
 
 ```python
-TCP_HEARTBEAT_PORT = 9999
-HTTP_SUBMIT_PORT = 8080
-DASHBOARD_PORT = 8000
+TCP_HEARTBEAT_PORT = 9999       # TCP心跳服务端口
+HTTP_SUBMIT_PORT = 8080         # HTTP提交接口端口
+DASHBOARD_PORT = 8000           # Web看板端口
 
-HEARTBEAT_INTERVAL = 5
-DISCONNECT_PENALTY_TIME = 30
+HEARTBEAT_INTERVAL = 5          # 心跳间隔（秒）
+DISCONNECT_WARNING_TIME = 10    # 断线警告时间（秒）
+DISCONNECT_PENALTY_TIME = 30    # 断线淘汰时间（秒）
 
-FLAG_SUBMIT_RATE_LIMIT = 3
-FLAG_SUBMIT_TIME_WINDOW = 60
+FLAG_SUBMIT_RATE_LIMIT = 3      # 每分钟提交次数限制
+FLAG_SUBMIT_TIME_WINDOW = 60    # 限流时间窗口（秒）
+
+FIX_PERIOD_MINUTES = 120        # 修复调试期（分钟）
+STABILIZE_PERIOD_MINUTES = 5    # 稳定校验期（分钟）
+ATTACK_PERIOD_MINUTES = 60      # 自由攻防期（分钟）
+
+DOS_THRESHOLD = 100             # DoS检测阈值（次）
+DOS_TIME_WINDOW = 10            # DoS检测时间窗口（秒）
 ```
 
 ## 裁判Web看板
@@ -399,10 +419,11 @@ cd ctf-attack-defense-system
 
 ### 版本信息
 
-| 版本 | 代码行数 | 漏洞数 | 准备时间 | 发布日期 |
-|------|---------|--------|---------|---------|
-| v3.1 | 2182行 | 7个 | 2小时 | 2024-01 |
-| v3.0 | 1560行 | 6个 | 30分钟 | 2024-01 |
+| 版本 | 代码行数 | 漏洞数 | 准备时间 | 核心特性 | 发布日期 |
+|------|---------|--------|---------|---------|---------|
+| v3.2 | 2182行 | 7个 | 可自定义（默认2小时） | 阶段时长可配置、配置化架构 | 2024-01 |
+| v3.1 | 2182行 | 7个 | 2小时 | 企业管理系统靶机、2000+代码 | 2024-01 |
+| v3.0 | 1560行 | 6个 | 30分钟 | 基础漏洞、跨平台支持 | 2024-01 |
 
 ### 本地构建
 

@@ -17,7 +17,7 @@ class JudgeConfig:
     
     MAX_PLAYER_RECONNECTS: int = 1
     
-    FIX_PERIOD_MINUTES: int = 30
+    FIX_PERIOD_MINUTES: int = 120
     STABILIZE_PERIOD_MINUTES: int = 5
     ATTACK_PERIOD_MINUTES: int = 60
     

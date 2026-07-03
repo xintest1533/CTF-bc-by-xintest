@@ -2,8 +2,12 @@ import time
 import threading
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 from enum import Enum
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from judge.config.judge_config import config as judge_config
 
 class GameStage(Enum):
     FIX = "fix"
@@ -16,9 +20,9 @@ class GameController:
         self.current_stage = GameStage.FIX
         self.stage_start_time = datetime.now()
         
-        self.fix_duration = timedelta(hours=2)
-        self.stabilize_duration = timedelta(minutes=5)
-        self.attack_duration = timedelta(minutes=60)
+        self.fix_duration = timedelta(minutes=judge_config.FIX_PERIOD_MINUTES)
+        self.stabilize_duration = timedelta(minutes=judge_config.STABILIZE_PERIOD_MINUTES)
+        self.attack_duration = timedelta(minutes=judge_config.ATTACK_PERIOD_MINUTES)
         
         self.stage_timers = {
             GameStage.FIX: self.fix_duration,
