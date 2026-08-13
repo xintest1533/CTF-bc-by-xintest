@@ -1,0 +1,13 @@
+Level,Check,Title,CVSS,CWE,URL
+HIGH,vpn_gateway_exposure,SSL VPN 网关公网暴露，登录页面可直接访问,7.5,CWE-200 / CWE-284,https://vpn.bpeg.cn/
+HIGH,http_mixed_content,主站包含 76 个 HTTP 明文链接，混合内容攻击风险,7.5,CWE-319 / CWE-602,https://www.bpeg.cn/
+HIGH,cookie_security,WAF Session Cookie 缺少全部安全标志（Secure/HttpOnly/SameSite）,7.5,CWE-614 / CWE-1004,https://www.bpeg.cn/
+MEDIUM,oa_system_down,OA 系统公网暴露但服务宕机 (502),5.3,CWE-200,http://oa.bpeg.cn/
+MEDIUM,missing_security_headers,全部子域名缺失 X-Frame-Options / CSP / X-Content-Type-Options 等 5 个安全响应头,5.3,CWE-16,https://www.bpeg.cn/
+MEDIUM,old_domain_exposure,主站链接指向旧域名 www.bpeg.ceec.net.cn，存在子域名接管风险,5.3,CWE-350,https://www.bpeg.cn/
+MEDIUM,vpn_robots_disallow,VPN 网关 robots.txt 禁止全站爬取，暴露系统敏感性,5.3,CWE-200,https://vpn.bpeg.cn/robots.txt
+LOW,server_header_cw,Server 响应头泄露华为云 WAF 标识 (CW),4.3,CWE-200,https://www.bpeg.cn/
+LOW,vpn_server_header,VPN 网关 Server 响应头为 'Server'（异常值）,4.3,CWE-200,https://vpn.bpeg.cn/
+LOW,phone_leak,主站页面泄露电话号码,4.3,CWE-200,https://www.bpeg.cn/
+INFO,subdomain_summary,子域名全景: 4 个子域名 (www/oa/vpn/en),,,https://www.bpeg.cn/
+INFO,tech_stack,技术栈: 华为云 WAF + Nginx + jQuery + SSL VPN 网关,,,https://www.bpeg.cn/
