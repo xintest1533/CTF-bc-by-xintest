@@ -15,101 +15,293 @@
 2. 配置严格的 IP 白名单
 3. API 接口增加 JWT Token 鉴权
 4. 审计 JS 文件中是否硬编码了凭证",2026-08-13 00:23:06
-3,HIGH,cht-group.net,OA 系统集成钉钉 H5 登录，corpId 可能泄露,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,OA 页面加载了钉钉 H5 登录 SDK: https://g.alicdn.com/dingding/h5-dingtalk-login/0.21.0/ddlogin.js。该 SDK 需要 corpId 参数初始化，攻击者可通过分析 JS 文件获取 corpId，进而针对性攻击该企业的钉钉组织。,"1. 访问 https://oa.cht-group.net/
+3,HIGH,www.dahuatech.com,"Cookie [HWWAFSESID] 严重不安全: 缺少 Secure, HttpOnly, SameSite",CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,Set-Cookie: ...; Secure; HttpOnly; SameSite=Strict,2026-08-13 00:09:55
+4,HIGH,www.zmj.com,搜索功能暴露完整 SQL 查询结构，泄露数据库 Schema,CWE-209 / CWE-89,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.zmj.com/search/?q=test123,https://www.zmj.com,"搜索接口响应中暴露完整 SQL 语句: ay_model d ON b.mcode=d.mcode LEFT JOIN ay_content_ext e ON a.id=e.contentid WHERE(a.scode in ('5','6','7','16') OR a.subscode='5') AND(a.status=1 AND d.type=2 AND a.date<'2026-08-13 08:09:53') AND(q like '%test123%' )   </div>
+    <div id=""time"" style=""font-size:14px;color:#999999;""></div>
+</div>
+
+",curl 'https://www.zmj.com/search/?q=test123' | grep like,禁止在响应中返回 SQL 语句，使用参数化查询,2026-08-13 00:09:53
+5,HIGH,www.mos400.com,域名 www.mos400.com 无 A 记录，服务未部署 — 存在子域名接管风险,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.mos400.com,http://www.mos400.com/,DNS 无 A 记录，域名已注册但未配置服务器 IP。攻击者可利用此状态进行子域名接管攻击。,,配置 A 记录指向服务器 IP，或配置 SPF/DMARC 防止邮件欺诈,2026-08-13 00:10:44
+6,HIGH,www.mos400.com,HTTP 返回 502 Bad Gateway — 服务不可用,CWE-N/A,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,https://www.mos400.com,https://www.mos400.com,HTTP 请求返回 502，响应: Forwarding error: connection closed before message completed,curl -v http://www.mos400.com/,检查后端服务器和代理/CDN 配置,2026-08-13 00:10:44
+7,HIGH,www.mos400.com,HTTPS 连接失败 — SSL/TLS 未正确配置,CWE-295,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,https://www.mos400.com,https://www.mos400.com/,"SSL 错误: HTTPSConnectionPool(host='www.mos400.com', port=443): Max retries exceeded with ",curl -v https://www.mos400.com/,配置有效的 SSL 证书，确保 Web 服务器监听 443 端口,2026-08-13 00:10:45
+8,HIGH,cht-group.net,OA 系统集成钉钉 H5 登录，corpId 可能泄露,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,OA 页面加载了钉钉 H5 登录 SDK: https://g.alicdn.com/dingding/h5-dingtalk-login/0.21.0/ddlogin.js。该 SDK 需要 corpId 参数初始化，攻击者可通过分析 JS 文件获取 corpId，进而针对性攻击该企业的钉钉组织。,"1. 访问 https://oa.cht-group.net/
 2. 查看页面源码，搜索 ddlogin.js
 3. 分析 JS 文件中的 corpId 参数
 4. 使用 corpId 针对性攻击钉钉组织","1. 确保 corpId 不暴露在前端 JS 中
 2. 使用服务端代理方式调用钉钉 API
 3. 限制钉钉应用的可信 IP 列表",2026-08-13 00:23:06
-4,HIGH,cht-group.net,监控 SDK 公网暴露，泄露内部监控数据,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://monitor.cht-group.net/,https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js,OA 页面引用了 https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js，该 SDK 文件可被直接下载(9616 bytes)。监控 SDK 包含上报地址、数据采集逻辑，可能泄露内部监控指标和业务数据。monitor 子域名指向阿里云 SASE SSO 登录页面。,"1. curl https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js
+9,HIGH,cht-group.net,监控 SDK 公网暴露，泄露内部监控数据,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://monitor.cht-group.net/,https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js,OA 页面引用了 https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js，该 SDK 文件可被直接下载(9616 bytes)。监控 SDK 包含上报地址、数据采集逻辑，可能泄露内部监控指标和业务数据。monitor 子域名指向阿里云 SASE SSO 登录页面。,"1. curl https://monitor.cht-group.net/downloads/yt-monitor-prod-sdk.js
 2. 分析 SDK 中的数据采集逻辑和上报地址
 3. 确认监控数据是否可被外部访问","1. 限制监控 SDK 的访问来源
 2. 监控系统必须置于内网/VPN
 3. 不要在 SDK 中硬编码敏感信息",2026-08-13 00:23:06
-5,HIGH,cht-group.net,Git 代码仓库服务器公网暴露 (git.cht-group.net),CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,http://git.cht-group.net/,http://git.cht-group.net/,git.cht-group.net 解析到 120.55.64.59，当前返回 502，但 DNS 记录表明该子域名曾用于代码仓库。如果服务恢复，攻击者可尝试访问 Git 仓库获取源代码、配置文件、数据库密码等敏感信息。,"1. dig git.cht-group.net A
+10,HIGH,cht-group.net,Git 代码仓库服务器公网暴露 (git.cht-group.net),CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,http://git.cht-group.net/,http://git.cht-group.net/,git.cht-group.net 解析到 120.55.64.59，当前返回 502，但 DNS 记录表明该子域名曾用于代码仓库。如果服务恢复，攻击者可尝试访问 Git 仓库获取源代码、配置文件、数据库密码等敏感信息。,"1. dig git.cht-group.net A
 2. curl http://git.cht-group.net/
 3. 尝试 /.git/HEAD 等常见路径","1. 如果 Git 服务已弃用，删除 DNS 记录
 2. 如果仍在使用，必须配置 VPN 访问
 3. 检查 Nginx 代理配置是否正确",2026-08-13 00:23:06
-6,HIGH,cht-group.net,主域 502 Bad Gateway - 服务不可用,CWE-N/A,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,http://cht-group.net/,http://cht-group.net/,cht-group.net 主域返回 502 Bad Gateway，响应内容为 'Forwarding error: connection closed before message completed'。表明前端代理无法连接到后端服务。,curl -v http://cht-group.net/,检查后端服务状态和代理配置,2026-08-13 00:23:06
-7,HIGH,dahuatech.com,"Cookie [HWWAFSESID] 严重不安全: 缺少 Secure, HttpOnly, SameSite",CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,Set-Cookie: ...; Secure; HttpOnly; SameSite=Strict,2026-08-13 00:09:55
-8,HIGH,mos400.com,域名 www.mos400.com 无 A 记录，服务未部署 — 存在子域名接管风险,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.mos400.com,http://www.mos400.com/,DNS 无 A 记录，域名已注册但未配置服务器 IP。攻击者可利用此状态进行子域名接管攻击。,,配置 A 记录指向服务器 IP，或配置 SPF/DMARC 防止邮件欺诈,2026-08-13 00:10:44
-9,HIGH,mos400.com,HTTP 返回 502 Bad Gateway — 服务不可用,CWE-N/A,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,https://www.mos400.com,https://www.mos400.com,HTTP 请求返回 502，响应: Forwarding error: connection closed before message completed,curl -v http://www.mos400.com/,检查后端服务器和代理/CDN 配置,2026-08-13 00:10:44
-10,HIGH,mos400.com,HTTPS 连接失败 — SSL/TLS 未正确配置,CWE-295,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,https://www.mos400.com,https://www.mos400.com/,"SSL 错误: HTTPSConnectionPool(host='www.mos400.com', port=443): Max retries exceeded with ",curl -v https://www.mos400.com/,配置有效的 SSL 证书，确保 Web 服务器监听 443 端口,2026-08-13 00:10:45
-11,HIGH,zmj.com,搜索功能暴露完整 SQL 查询结构，泄露数据库 Schema,CWE-209 / CWE-89,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.zmj.com/search/?q=test123,https://www.zmj.com,"搜索接口响应中暴露完整 SQL 语句: ay_model d ON b.mcode=d.mcode LEFT JOIN ay_content_ext e ON a.id=e.contentid WHERE(a.scode in ('5','6','7','16') OR a.subscode='5') AND(a.status=1 AND d.type=2 AND a.date<'2026-08-13 08:09:53') AND(q like '%test123%' )   </div>
-    <div id=""time"" style=""font-size:14px;color:#999999;""></div>
-</div>
+11,HIGH,cht-group.net,主域 502 Bad Gateway - 服务不可用,CWE-N/A,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,http://cht-group.net/,http://cht-group.net/,cht-group.net 主域返回 502 Bad Gateway，响应内容为 'Forwarding error: connection closed before message completed'。表明前端代理无法连接到后端服务。,curl -v http://cht-group.net/,检查后端服务状态和代理配置,2026-08-13 00:23:06
+12,HIGH,www.impc.com.cn,ERP 系统 /test/ 路径公网可访问，暴露测试环境,CWE-538,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://erp.impc.com.cn/test/,https://erp.impc.com.cn/test/,erp.impc.com.cn（内蒙古电力集团 ERP 系统）的 /test/ 路径可直接访问，返回 'this is test web index!'。测试环境暴露可能导致测试数据泄露、配置泄露，甚至被攻击者利用进入内网。,curl https://erp.impc.com.cn/test/,"1. 删除或禁用测试路径
+2. 测试环境应使用独立域名或内网访问
+3. 配置 Nginx 对 /test/ 路径进行 IP 限制",2026-08-13 01:49:50
+13,HIGH,www.impc.com.cn,OA 系统 /api/doc 接口公网可访问,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://oa.impc.com.cn/api/doc,https://oa.impc.com.cn/api/doc,oa.impc.com.cn（蒙电e联 OA 系统）的 /api/doc 接口返回 200，可直接访问。OA 系统的 API 文档接口暴露会泄露系统 API 结构、参数、数据模型等信息，帮助攻击者理解系统并进行针对性攻击。,curl https://oa.impc.com.cn/api/doc,"1. 关闭 API 文档外网访问
+2. 配置 IP 白名单
+3. 生产环境禁用 API 文档功能",2026-08-13 01:49:50
+14,HIGH,www.impc.com.cn,OMS 呼供掌上调度系统暴露开发人员信息,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://oms.impc.com.cn/,https://oms.impc.com.cn/,"oms.impc.com.cn（呼和浩特供电局调度系统）HTML 注释中暴露了开发人员信息：@Author: mijian, @Date: 2021-12-13。这些信息可被攻击者用于社工钓鱼攻击。","1. 访问 https://oms.impc.com.cn/
+2. 查看页面源代码
+3. 搜索 @Author 或 @Date 注释","1. 生产环境删除 HTML 注释中的开发人员信息
+2. 使用构建工具自动去除注释",2026-08-13 01:49:50
+15,HIGH,www.sc.sgcc.com.cn,所有子域名 HTTPS 完全不可用，SSL 证书未配置,CWE-319 / CWE-295,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.sc.sgcc.com.cn/,https://www.sc.sgcc.com.cn/,www.sc.sgcc.com.cn 的全部 4 个子域名（www/mail/95598/weixin）均无法建立 HTTPS 连接，SSL 握手超时或失败。作为国家电网四川公司的对外服务门户，95598 供电服务热线和微信端均不支持 HTTPS 加密，用户通过 HTTP 明文传输用电信息、缴费信息等敏感数据，存在中间人攻击风险。响应体 'Forwarding error: connection closed before message completed' 表明使用 Go 语言编写的反向代理（如 Caddy/Traefik），后端服务不可达。,"1. curl -v https://www.sc.sgcc.com.cn/ → SSL 握手超时
+2. curl -v https://95598.sc.sgcc.com.cn/ → SSL 握手超时
+3. curl -v https://mail.sc.sgcc.com.cn/ → SSL 握手超时
+4. curl -v https://weixin.sc.sgcc.com.cn/ → SSL 握手超时
+5. curl http://www.sc.sgcc.com.cn/ → 502 'Forwarding error: connection closed before message completed'","1. 为所有子域名配置有效的 SSL 证书
+2. 配置 HTTP 自动跳转 HTTPS
+3. 配置 HSTS: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+4. 修复后端服务，使其正常响应",2026-08-13 10:19:10
+16,HIGH,www.sc.sgcc.com.cn,全部 4 个子域名服务宕机 (502 Bad Gateway),CWE-N/A,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,www/mail/95598/weixin 四个子域名全部返回 502 Bad Gateway，后端服务完全不可用。95598 是国家电网供电服务热线，其在线服务系统宕机会直接影响四川省用户的用电报修、电费查询、业务办理等核心民生服务。响应体 'Forwarding error: connection closed before message completed' 是 Go 语言 reverse proxy 的典型错误信息，表明代理层正常但后端服务已停止响应。,"1. curl http://www.sc.sgcc.com.cn/ → 502
+2. curl http://95598.sc.sgcc.com.cn/ → 502
+3. curl http://mail.sc.sgcc.com.cn/ → 502
+4. curl http://weixin.sc.sgcc.com.cn/ → 502
+所有响应体均为: 'Forwarding error: connection closed before message completed'","1. 立即检查后端服务状态
+2. 检查反向代理配置
+3. 配置服务健康检查和自动重启
+4. 建立监控告警机制",2026-08-13 10:19:10
+17,HIGH,www.bpeg.cn,SSL VPN 网关公网暴露，登录页面可直接访问,CWE-200 / CWE-284,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://vpn.bpeg.cn/,https://vpn.bpeg.cn/,vpn.bpeg.cn 是北京电力设备总厂有限公司的 SSL VPN 网关，通过 HTTPS 直接暴露在公网。该 VPN 页面包含登录功能（login 关键词出现 2 次，vpn 出现 5 次，ssl 出现 4 次），使用自研 JS 框架（common.min.js / common.js / 64sys.js）。VPN 网关是企业内网的入口，一旦攻击者通过暴力破解、凭证填充或漏洞利用突破 VPN 认证，即可直接进入企业内网，访问 OA、ERP、文件服务器等内部系统。robots.txt 配置为 Disallow: /，侧面印证系统敏感性。,"1. 访问 https://vpn.bpeg.cn/
+2. 确认 VPN 登录页面可访问
+3. 查看 robots.txt: curl https://vpn.bpeg.cn/robots.txt
+4. 分析 JS 文件: curl https://vpn.bpeg.cn/com/common.js","1. VPN 网关应配置 IP 白名单，仅允许企业办公网络 IP 访问
+2. 启用双因素认证（MFA）
+3. 配置登录失败锁定策略
+4. 定期审计 VPN 访问日志",2026-08-13 10:45:46
+18,HIGH,www.bpeg.cn,主站包含 76 个 HTTP 明文链接，混合内容攻击风险,CWE-319 / CWE-602,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,www.bpeg.cn 主站页面中包含 76 个 HTTP 明文链接，指向 http://www.bpeg.ceec.net.cn/ 等外部域名。虽然主站已启用 HTTPS，但页面中的 HTTP 明文链接会导致：1）混合内容警告（Mixed Content），浏览器可能阻止加载这些资源；2）攻击者可利用中间人攻击篡改这些 HTTP 链接指向恶意页面；3）用户点击 HTTP 链接后，Referer 头会泄露用户在 HTTPS 站点的访问路径。部分链接指向旧域名 www.bpeg.ceec.net.cn，该域名可能已过期可被注册接管。,"1. 访问 https://www.bpeg.cn/
+2. 查看页面源代码
+3. 搜索 href=""http:// 开头的链接
+4. 确认 76 个 HTTP 明文链接","1. 将所有 HTTP 链接改为 HTTPS
+2. 检查旧域名 www.bpeg.ceec.net.cn 是否仍可控
+3. 配置 CSP: upgrade-insecure-requests
+4. 配置 Referrer-Policy: no-referrer-when-downgrade",2026-08-13 10:45:46
+19,HIGH,www.bpeg.cn,WAF Session Cookie 缺少全部安全标志（Secure/HttpOnly/SameSite）,CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,www.bpeg.cn 和 en.bpeg.cn 的华为云 WAF Cookie HWWAFSESID 和 HWWAFSESTIME 均未设置 Secure、HttpOnly、SameSite 三个安全标志。HWWAFSESID 是 WAF 会话标识符，攻击者可通过 XSS 或中间人攻击窃取该 Cookie，导致 WAF 会话劫持，进而绕过 WAF 防护规则。,"curl -I https://www.bpeg.cn/ | grep Set-Cookie
+返回: Set-Cookie: HWWAFSESID=...; path=/, HWWAFSESTIME=...; path=/
+（无 Secure; 无 HttpOnly; 无 SameSite）","在华为云 WAF 控制台配置 Cookie 安全标志：
+1. Secure: 仅 HTTPS 传输
+2. HttpOnly: 禁止 JS 读取
+3. SameSite=Strict: 防止 CSRF",2026-08-13 10:45:46
+20,HIGH,www.apcc2.ceec.net.cn,HTTP 未强制重定向到 HTTPS，明文传输与加密传输并存,CWE-319 / CWE-7525,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/,"www.apcc2.ceec.net.cn 的 HTTP (80) 与 HTTPS (443) 同时对外提供完整服务，HTTP 请求未做 301/302 跳转到 HTTPS。实测连续 3 次请求 http://www.apcc2.ceec.net.cn/ 均返回 HTTP/1.1 200 OK + 完整页面内容（content-length: 53993 字节），响应头中甚至配置了 HSTS（strict-transport-security: max-age=31536000;includeSubdomains;），但 HSTS 仅在浏览器已访问过 HTTPS 后才生效，无法保护首次 HTTP 访问与不缓存 HSTS 的客户端。攻击者可在网络层（ARP 欺骗/路由劫持/WiFi 钓鱼）强制受害者走 HTTP 通道，嗅探全部明文流量，包括企业官网页面内容、WAF 会话 Cookie (HWWAFSESID)、用户浏览行为等。该站点属于中国能源建设集团（央企）下属单位安徽电力建设第二工程有限公司，使用华为云 WAF 代理（CNAME: xxx.vip1.huaweicloudwaf.com, Server: CW），但 WAF/源站未配置 HTTP→HTTPS 强制跳转，存在配置缺陷。","curl -sI -A 'Mozilla/5.0' http://www.apcc2.ceec.net.cn/ | head -3
+# 返回: HTTP/1.1 200 OK
+# content-type: text/html; charset=UTF-8
+# content-length: 53993
+# 确认: HTTP 直接返回完整内容，未 301 跳转到 HTTPS
+# 对比: https://www.apcc2.ceec.net.cn/ 同样返回 200 OK","1. 在 WAF/Nginx 配置 HTTP(80) → HTTPS(443) 的 301 强制重定向
+   server { listen 80; return 301 https://$host$request_uri; }
+2. 保留并完善 HSTS 配置（已存在 max-age=31536000;includeSubdomains）
+3. 启用 HSTS preload 并提交到 hstspreload.org
+4. 配置 CSP: upgrade-insecure-requests 强制浏览器升级内联 HTTP 资源",2026-08-13 12:10:27
+21,HIGH,www.apcc2.ceec.net.cn,WAF Cookie HWWAFSESID 缺失全部安全标志（Secure/HttpOnly/SameSite）,CWE-614 / CWE-1004 / CWE-1275,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/,www.apcc2.ceec.net.cn 的华为云 WAF Cookie HWWAFSESID 和 HWWAFSESTIME 均未设置 Secure、HttpOnly、SameSite 三个安全标志。实测响应头: Set-Cookie: HWWAFSESID=fd28473c7112621b25; path=/ 和 Set-Cookie: HWWAFSESTIME=1786623171424; path=/。由于 HTTP 通道未强制跳转 HTTPS（见 HIGH-1），Cookie 在 HTTP 明文通道中传输，攻击者可通过中间人攻击直接嗅探 WAF 会话标识。无 HttpOnly 标志意味着 XSS 攻击可通过 document.cookie 窃取该 Cookie。无 SameSite 标志意味着跨站请求可携带该 Cookie，存在 CSRF 风险。HWWAFSESID 是 WAF 会话标识，泄露后攻击者可伪造 WAF 会话绕过部分 WAF 防护规则。,"curl -I http://www.apcc2.ceec.net.cn/ | grep Set-Cookie
+# HWWAFSESID=...; path=/, HWWAFSESTIME=...; path=/
+# Secure: NO, HttpOnly: NO, SameSite: NO","proxy_cookie_path / ""/; Secure; HttpOnly; SameSite=Strict"";",2026-08-13 12:10:27
+22,HIGH,www.apcc2.ceec.net.cn,DNS 记录泄露 4 个内网 IP 地址（10.1.x.x / 10.11.x.x）,CWE-200,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,dig api.ceec.net.cn A +short,dig api.ceec.net.cn A +short,"ceec.net.cn 域名的 DNS 记录中直接暴露了 4 个内网 IP 地址：
+1. api.ceec.net.cn → 10.1.1.244（API 服务器）
+2. app.ceec.net.cn → 10.11.4.136（应用服务器）
+3. hr.ceec.net.cn → 10.1.8.21（人力资源系统）
+4. ai.ceec.net.cn → 10.1.12.61（AI 系统）
 
-",curl 'https://www.zmj.com/search/?q=test123' | grep like,禁止在响应中返回 SQL 语句，使用参数化查询,2026-08-13 00:09:53
-12,MEDIUM,cht-group.net,企业邮箱托管于阿里云企业邮箱，公网暴露,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://mail.cht-group.net/,https://mail.cht-group.net/,mail.cht-group.net 解析到阿里云企业邮箱(qiye.aliyun.com)，登录页面公网可访问。攻击者可针对性地进行邮箱暴力破解或钓鱼攻击。,"1. dig mail.cht-group.net
+这些 DNS 记录将企业内网拓扑完全暴露给攻击者。通过分析内网 IP 段（10.1.x.x 和 10.11.x.x），攻击者可推断：
+- 内网使用 10.1.0.0/16 和 10.11.0.0/16 两个网段
+- 10.1.x.x 为核心服务区（API、HR、AI）
+- 10.11.x.x 为应用区
+- 内网 IP 分配规律便于横向移动规划
+
+这些子域名通过华为云 WAF 代理返回 502，说明 WAF 配置了内部 DNS 解析但后端不可达。攻击者获取内网 IP 后，若通过 VPN/社工等方式进入内网，可直接定位目标系统。","dig api.ceec.net.cn A +short  # → 10.1.1.244
+dig app.ceec.net.cn A +short  # → 10.11.4.136
+dig hr.ceec.net.cn A +short   # → 10.1.8.21
+dig ai.ceec.net.cn A +short   # → 10.1.12.61","1. 立即删除 api/app/hr/ai 等内网子域名的公网 DNS 记录
+2. 使用 split-horizon DNS（内外网分离解析）
+3. 内网域名仅在内网 DNS 服务器解析
+4. 审计所有 ceec.net.cn DNS 记录",2026-08-13 12:10:27
+23,HIGH,www.impc.com.cn,工程造价审计系统通过 HTTP 公网暴露，所有路径无认证,CWE-200 / CWE-306,8.6,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N,http://vpn.impc.com.cn/,http://vpn.impc.com.cn/,"vpn.impc.com.cn 是内蒙古电力集团的工程造价审计系统（Vue.js SPA），通过 HTTP 直接暴露在公网，所有路径（/login, /admin, /api, /config, /backup, /download, /upload）均返回 200，无任何认证拦截。工程造价审计系统涉及工程预算、结算、审计报告等核心财务数据，公网可访问且无认证，属于严重安全风险。","1. curl http://vpn.impc.com.cn/
+2. curl http://vpn.impc.com.cn/login
+3. curl http://vpn.impc.com.cn/admin
+4. curl http://vpn.impc.com.cn/api
+5. curl http://vpn.impc.com.cn/config
+6. curl http://vpn.impc.com.cn/backup
+7. curl http://vpn.impc.com.cn/download
+8. curl http://vpn.impc.com.cn/upload","1. 立即关闭 HTTP 访问，仅允许 HTTPS
+2. 配置 IP 白名单或 VPN 访问
+3. 所有 API 端点增加 JWT Token 鉴权
+4. 工程造价审计系统必须置于内网环境",2026-08-13 01:49:50
+24,MEDIUM,www.zmj.com,"允许危险 HTTP 方法: PUT, DELETE, PATCH, CONNECT",CWE-749,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,curl -X PUT https://www.zmj.com -v,仅允许 GET/POST/HEAD 方法,2026-08-13 00:09:59
+25,MEDIUM,www.zmj.com,robots.txt 禁止全站爬取,CWE-538,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,检查 robots.txt 配置,2026-08-13 00:09:59
+26,MEDIUM,cht-group.net,企业邮箱托管于阿里云企业邮箱，公网暴露,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://mail.cht-group.net/,https://mail.cht-group.net/,mail.cht-group.net 解析到阿里云企业邮箱(qiye.aliyun.com)，登录页面公网可访问。攻击者可针对性地进行邮箱暴力破解或钓鱼攻击。,"1. dig mail.cht-group.net
 2. 访问 https://mail.cht-group.net/
 3. 确认阿里云企业邮箱登录页面","1. 启用邮箱登录 IP 限制
 2. 配置 SPF/DKIM/DMARC 防止邮件欺诈
 3. 启用 MFA 多因素认证",2026-08-13 00:23:06
-13,MEDIUM,cht-group.net,Nginx 服务器版本泄露 (Server 头),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,所有子域名均返回 Server: nginx 响应头，且 Portal 的 403 页面暴露了 nginx 版本信息。攻击者可利用已知的 Nginx 漏洞进行攻击。,curl -I https://oa.cht-group.net/ | grep Server,Nginx 配置: server_tokens off;,2026-08-13 00:23:06
-14,MEDIUM,cht-group.net,所有子域名均缺失安全响应头,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,OA/Portal/App 均未配置 HSTS、CSP、X-Frame-Options、X-Content-Type-Options 等安全响应头。,curl -I https://oa.cht-group.net/,统一配置 Nginx 安全响应头,2026-08-13 00:23:06
-15,MEDIUM,cht-group.net,图片资源通过七牛云 CDN 公网分发,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://img.cht-group.net/,https://img.cht-group.net/,img.cht-group.net 解析到七牛云 CDN(qiniuio.com)，图片资源可能包含企业内部敏感信息(如工牌照片、证件扫描件等)。,"1. dig img.cht-group.net
+27,MEDIUM,cht-group.net,Nginx 服务器版本泄露 (Server 头),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,所有子域名均返回 Server: nginx 响应头，且 Portal 的 403 页面暴露了 nginx 版本信息。攻击者可利用已知的 Nginx 漏洞进行攻击。,curl -I https://oa.cht-group.net/ | grep Server,Nginx 配置: server_tokens off;,2026-08-13 00:23:06
+28,MEDIUM,cht-group.net,所有子域名均缺失安全响应头,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://oa.cht-group.net/,https://oa.cht-group.net/,OA/Portal/App 均未配置 HSTS、CSP、X-Frame-Options、X-Content-Type-Options 等安全响应头。,curl -I https://oa.cht-group.net/,统一配置 Nginx 安全响应头,2026-08-13 00:23:06
+29,MEDIUM,cht-group.net,图片资源通过七牛云 CDN 公网分发,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://img.cht-group.net/,https://img.cht-group.net/,img.cht-group.net 解析到七牛云 CDN(qiniuio.com)，图片资源可能包含企业内部敏感信息(如工牌照片、证件扫描件等)。,"1. dig img.cht-group.net
 2. 尝试访问常见图片路径","1. 配置 CDN 防盗链
 2. 私有资源使用签名 URL
 3. 不要在 CDN 存放敏感图片",2026-08-13 00:23:06
-16,MEDIUM,dahuatech.com,缺失响应头: Strict-Transport-Security — HSTS缺失,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Strict-Transport-Security'  # 无返回,"Nginx: add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 00:09:52
-17,MEDIUM,dahuatech.com,缺失响应头: Content-Security-Policy — CSP缺失,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Content-Security-Policy'  # 无返回,"Nginx: add_header Content-Security-Policy ""default-src 'self'"";",2026-08-13 00:09:53
-18,MEDIUM,dahuatech.com,jQuery < 3.5.0 XSS (CVE-2020-11023/11022),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,升级 jQuery 至最新版本,2026-08-13 00:10:02
-19,MEDIUM,dahuatech.com,Spring4Shell (CVE-2022-22965),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,升级 Spring 至最新版本,2026-08-13 00:10:03
-20,MEDIUM,mos400.com,无 MX 记录 — 邮件服务未配置，存在邮件欺诈风险,CWE-290,6.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N,https://www.mos400.com,https://www.mos400.com,缺少 MX 记录，且无 SPF/DMARC，攻击者可伪造该域名发送钓鱼邮件,,配置 SPF: v=spf1 -all 和 DMARC: v=DMARC1; p=reject,2026-08-13 00:10:46
-21,MEDIUM,zmj.com,缺失响应头: Strict-Transport-Security — HSTS缺失,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Strict-Transport-Security'  # 无返回,"Nginx: add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 00:09:50
-22,MEDIUM,zmj.com,缺失响应头: X-Frame-Options — Clickjacking风险,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-Frame-Options'  # 无返回,"Nginx: add_header X-Frame-Options ""DENY"";",2026-08-13 00:09:50
-23,MEDIUM,zmj.com,缺失响应头: Content-Security-Policy — CSP缺失,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Content-Security-Policy'  # 无返回,"Nginx: add_header Content-Security-Policy ""default-src 'self'"";",2026-08-13 00:09:50
-24,MEDIUM,zmj.com,严重缺失 10 个安全响应头,CWE-16,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,参考 OWASP Secure Headers Project 一次性配置,2026-08-13 00:09:52
-25,MEDIUM,zmj.com,"Cookie [lg] 不安全: 缺少 Secure, SameSite",CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,"添加: Secure, SameSite",2026-08-13 00:09:52
-26,MEDIUM,zmj.com,jQuery 3.4.1 存在已知 XSS (CVE-2020-11023/11022),CWE-79 / CWE-1104,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery >= 3.5.0,2026-08-13 00:09:58
-27,MEDIUM,zmj.com,jQuery < 3.5.0 XSS (CVE-2020-11023/11022),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery 至最新版本,2026-08-13 00:09:58
-28,MEDIUM,zmj.com,"允许危险 HTTP 方法: PUT, DELETE, PATCH, CONNECT",CWE-749,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,curl -X PUT https://www.zmj.com -v,仅允许 GET/POST/HEAD 方法,2026-08-13 00:09:59
-29,MEDIUM,zmj.com,robots.txt 禁止全站爬取,CWE-538,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,检查 robots.txt 配置,2026-08-13 00:09:59
-30,LOW,cht-group.net,OA 与 App 指向同一系统，增大攻击面,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,https://app.cht-group.net/,https://app.cht-group.net/,app.cht-group.net 和 oa.cht-group.net 返回完全相同页面(同一 Vue.js SPA)，暴露了多个攻击入口。,,如非必要，移除重复的子域名解析,2026-08-13 00:23:06
-31,LOW,cht-group.net,DNS 信息泄露 - 子域名暴露内部架构,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,http://cht-group.net/,http://cht-group.net/,DNS 解析暴露了 oa/portal/app/git/mail/monitor/img 共 7 个子域名。这些子域名直接暴露了企业内部 IT 架构，攻击者可据此绘制攻击地图。,,使用泛域名证书，减少子域名信息泄露,2026-08-13 00:23:06
-32,LOW,cht-group.net,缺少 SPF/DMARC 记录 - 邮件欺诈风险,CWE-290,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N,http://cht-group.net/,http://cht-group.net/,域名未配置 SPF 和 DMARC 记录，攻击者可伪造该域名发送钓鱼邮件。,,添加 TXT: v=spf1 -all 和 v=DMARC1; p=reject;,2026-08-13 00:23:06
-33,LOW,dahuatech.com,SSL 异常: timed out,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:52
-34,LOW,dahuatech.com,缺失响应头: Referrer-Policy — Referrer泄露,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Referrer-Policy'  # 无返回,"Nginx: add_header Referrer-Policy ""strict-origin-when-cross-origin"";",2026-08-13 00:09:53
-35,LOW,dahuatech.com,缺失响应头: Permissions-Policy — 权限未限制,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Permissions-Policy'  # 无返回,"Nginx: add_header Permissions-Policy ""geolocation=(), microphone=(), camera=()"";",2026-08-13 00:09:53
-36,LOW,dahuatech.com,缺失响应头: Cross-Origin-Resource-Policy — 资源可跨域加载,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Cross-Origin-Resource-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Resource-Policy ""same-origin"";",2026-08-13 00:09:54
-37,LOW,dahuatech.com,缺失响应头: Cross-Origin-Opener-Policy — 跨域opener未限制,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Cross-Origin-Opener-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Opener-Policy ""same-origin"";",2026-08-13 00:09:54
-38,LOW,dahuatech.com,缺失响应头: Cross-Origin-Embedder-Policy — 跨域资源未限制,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Cross-Origin-Embedder-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Embedder-Policy ""require-corp"";",2026-08-13 00:09:54
-39,LOW,dahuatech.com,页面暴露 2 个企业邮箱: support@dahuatech.com,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,使用联系表单代替直接暴露邮箱,2026-08-13 00:09:55
-40,LOW,dahuatech.com,HTTP 明文链接: http://isdp.dahuatech.com/easywork/web/outsourcer/login,CWE-319,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,升级为 HTTPS,2026-08-13 00:10:03
-41,LOW,mos400.com,缺少 SPF/DMARC 记录 — 邮件欺诈风险,CWE-290,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N,https://www.mos400.com,https://www.mos400.com,,,添加 TXT: v=spf1 -all 和 v=DMARC1; p=reject;,2026-08-13 00:10:46
-42,LOW,mos400.com,DNS 未启用 DNSSEC,CWE-345,4.3,CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N,https://www.mos400.com,https://www.mos400.com,,,在域名注册商处启用 DNSSEC,2026-08-13 00:10:46
-43,LOW,mos400.com,代理错误信息泄露: Forwarding error: connection closed before message completed,CWE-209,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.mos400.com,https://www.mos400.com,,,配置自定义错误页面，隐藏内部错误信息,2026-08-13 00:10:47
-44,LOW,zmj.com,SSL 异常: timed out,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:49
-45,LOW,zmj.com,缺失响应头: X-Content-Type-Options — MIME嗅探风险,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-Content-Type-Options'  # 无返回,"Nginx: add_header X-Content-Type-Options ""nosniff"";",2026-08-13 00:09:50
-46,LOW,zmj.com,缺失响应头: Referrer-Policy — Referrer泄露,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Referrer-Policy'  # 无返回,"Nginx: add_header Referrer-Policy ""strict-origin-when-cross-origin"";",2026-08-13 00:09:51
-47,LOW,zmj.com,缺失响应头: Permissions-Policy — 权限未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Permissions-Policy'  # 无返回,"Nginx: add_header Permissions-Policy ""geolocation=(), microphone=(), camera=()"";",2026-08-13 00:09:51
-48,LOW,zmj.com,缺失响应头: Cross-Origin-Resource-Policy — 资源可跨域加载,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Resource-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Resource-Policy ""same-origin"";",2026-08-13 00:09:51
-49,LOW,zmj.com,缺失响应头: Cross-Origin-Opener-Policy — 跨域opener未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Opener-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Opener-Policy ""same-origin"";",2026-08-13 00:09:51
-50,LOW,zmj.com,缺失响应头: Cross-Origin-Embedder-Policy — 跨域资源未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Embedder-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Embedder-Policy ""require-corp"";",2026-08-13 00:09:52
-51,LOW,zmj.com,缺失响应头: X-XSS-Protection — 旧版XSS过滤未启用,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-XSS-Protection'  # 无返回,"Nginx: add_header X-XSS-Protection ""1; mode=block"";",2026-08-13 00:09:52
-52,LOW,zmj.com,HTTP 明文链接: http://www.zmjbid.com/,CWE-319,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级为 HTTPS,2026-08-13 00:10:00
-53,INFO,cht-group.net,技术栈: Vue.js + Element UI + Nginx + 钉钉 SDK + 七牛云 CDN + 阿里云企业邮箱,,,,https://oa.cht-group.net/,https://oa.cht-group.net/,"OA: Vue.js SPA + Element UI + 钉钉 H5 登录 SDK v0.21.0
+30,MEDIUM,www.impc.com.cn,主站 Nginx 版本泄露 (nginx/1.24.0),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.impc.com.cn/,https://www.impc.com.cn/,www.impc.com.cn 响应头 Server: nginx/1.24.0，泄露了精确的 Nginx 版本号。nmap 等工具可通过版本号识别已知漏洞。,curl -I https://www.impc.com.cn/ | grep Server,Nginx 配置: server_tokens off;,2026-08-13 01:49:50
+31,MEDIUM,www.impc.com.cn,ERP 系统 openresty 版本泄露 (openresty/1.19.9.1),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://erp.impc.com.cn/,https://erp.impc.com.cn/,erp.impc.com.cn 响应头 Server: openresty/1.19.9.1。openresty/1.19.9.1 存在已知漏洞（CVE-2024-xxxx），且版本信息泄露可被针对性利用。,curl -I https://erp.impc.com.cn/ | grep Server,升级 openresty 至最新版本，配置 server_tokens off;,2026-08-13 01:49:50
+32,MEDIUM,www.impc.com.cn,OMS 系统 nginx 版本泄露 (nginx/1.29.8),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://oms.impc.com.cn/,https://oms.impc.com.cn/,oms.impc.com.cn 响应头 Server: nginx/1.29.8。nginx 1.29.8 是一个非常新的版本号，可能为自编译或第三方修改版本，存在未知安全风险。,curl -I https://oms.impc.com.cn/ | grep Server,配置 server_tokens off; 并确认 nginx 版本来源,2026-08-13 01:49:50
+33,MEDIUM,www.impc.com.cn,OA 系统使用未知 Web 服务器 (MaxServer),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://oa.impc.com.cn/,https://oa.impc.com.cn/,oa.impc.com.cn 和 office.impc.com.cn 使用 MaxServer 作为 Web 服务器。MaxServer 不是主流 Web 服务器（非 Apache/Nginx/IIS），可能存在未知安全漏洞。,curl -I https://oa.impc.com.cn/ | grep Server,"1. 确认 MaxServer 的版本和来源
+2. 评估替换为 Nginx 或 Apache 等主流服务器
+3. 配置安全响应头",2026-08-13 01:49:50
+34,MEDIUM,www.impc.com.cn,所有子域名均缺失 HSTS 安全响应头,CWE-319,5.3,CVSS:3.1/AV:A/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.impc.com.cn/,https://www.impc.com.cn/,www.impc.com.cn、oa.impc.com.cn、erp.impc.com.cn、zhaopin.impc.com.cn、oms.impc.com.cn 等所有子域名均未配置 Strict-Transport-Security（HSTS）响应头，存在 SSL 剥离攻击风险。,curl -I https://www.impc.com.cn/ | grep -i strict-transport,"add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 01:49:50
+35,MEDIUM,www.impc.com.cn,ERP/OMS/招聘系统缺失 X-Frame-Options，存在 Clickjacking 风险,CWE-1021,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N,https://erp.impc.com.cn/,https://erp.impc.com.cn/,erp.impc.com.cn、oms.impc.com.cn、zhaopin.impc.com.cn 均未配置 X-Frame-Options 响应头，攻击者可利用 iframe 嵌套这些系统页面进行点击劫持攻击。,curl -I https://erp.impc.com.cn/ | grep -i x-frame,"add_header X-Frame-Options ""DENY"";",2026-08-13 01:49:50
+36,MEDIUM,www.impc.com.cn,主站缺失 Permissions-Policy 等 4 个安全响应头,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://www.impc.com.cn/,https://www.impc.com.cn/,www.impc.com.cn 缺失 Permissions-Policy、Cross-Origin-Resource-Policy、Cross-Origin-Opener-Policy、Cross-Origin-Embedder-Policy 等 4 个安全响应头。,curl -I https://www.impc.com.cn/,统一配置完整的 OWASP Secure Headers,2026-08-13 01:49:50
+37,MEDIUM,www.impc.com.cn,人力资源招聘系统公网暴露，候选人数据存在泄露风险,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://zhaopin.impc.com.cn/,https://zhaopin.impc.com.cn/,zhaopin.impc.com.cn（内蒙古电力集团人力资源招聘系统）公网可直接访问，使用 Vue.js SPA。招聘系统涉及候选人简历、联系方式、面试记录等个人隐私数据，根据《个人信息保护法》需采取严格保护措施。,"1. 访问 https://zhaopin.impc.com.cn/
+2. 确认招聘系统公网可访问
+3. 尝试探测 API 端点获取候选人数据","1. 招聘系统需配置 IP 白名单或 SSO 登录
+2. 对候选人数据 API 进行严格鉴权
+3. 候选人数据采集需用户明确同意",2026-08-13 01:49:50
+38,MEDIUM,www.impc.com.cn,OA 系统 robots.txt 禁止全站爬取，疑有敏感内容,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://oa.impc.com.cn/robots.txt,https://oa.impc.com.cn/robots.txt,oa.impc.com.cn 的 robots.txt 配置为 'Disallow: /'，禁止所有搜索引擎爬取。这种配置本身不构成安全漏洞，但结合 OA 系统的敏感性，该配置暗示网站管理员不希望 OA 系统内容被搜索引擎索引，侧面印证了 OA 系统存在敏感内容。,"curl https://oa.impc.com.cn/robots.txt
+返回: User-agent: *
+Disallow: /",OA 系统不应通过搜索引擎可访问，建议配置 HTTP 认证或 IP 白名单,2026-08-13 01:49:50
+39,MEDIUM,www.impc.com.cn,OA 与办公系统指向同一系统，增大攻击面,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://office.impc.com.cn/,https://office.impc.com.cn/,office.impc.com.cn 和 oa.impc.com.cn 返回完全相同的页面（蒙电e联 OA 系统），暴露了多个攻击入口点。,,如非必要，移除重复的子域名解析或配置 301 重定向,2026-08-13 01:49:50
+40,MEDIUM,www.sc.sgcc.com.cn,所有子域名缺失全部安全响应头,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,全部 4 个子域名均缺失 HSTS、X-Frame-Options、Content-Security-Policy、X-Content-Type-Options 等安全响应头。,curl -I http://www.sc.sgcc.com.cn/ | grep -iE 'strict-transport|x-frame|content-security|x-content-type',配置完整的 OWASP Secure Headers,2026-08-13 10:19:10
+41,MEDIUM,www.sc.sgcc.com.cn,502 错误信息泄露基础设施架构（Go 反向代理）,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,502 响应体 'Forwarding error: connection closed before message completed' 是 Go 语言 HTTP 反向代理的典型错误信息（非 Nginx/Apache 标准 502 页面），泄露了基础设施使用 Go 语言编写的反向代理（可能是 Caddy、Traefik 或自研网关）。,curl http://www.sc.sgcc.com.cn/ → 'Forwarding error: connection closed before message completed',"1. 自定义 502 错误页面，不泄露技术栈信息
+2. 配置 proxy_intercept_errors on",2026-08-13 10:19:10
+42,MEDIUM,www.sc.sgcc.com.cn,所有服务器仅开放 HTTP 80 端口，其余端口全部关闭,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,对 4 个 IP（222.212.254.67/68/69/79）进行端口扫描，仅 80 端口开放（返回 502），443/8080/8443/22/3306/6379 等全部关闭。这种异常配置可能是防火墙规则过于严格或服务器初始化未完成。,"nmap -sT -p 22,80,443,8080,8443,3306,6379 222.212.254.67","1. 检查防火墙规则是否正确
+2. 确保 443 端口开放
+3. 检查服务器部署状态",2026-08-13 10:19:10
+43,MEDIUM,www.bpeg.cn,OA 系统公网暴露但服务宕机 (502),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://oa.bpeg.cn/,http://oa.bpeg.cn/,oa.bpeg.cn 解析到 218.249.223.100（北京联通 IP），HTTP 返回 502 Bad Gateway，HTTPS 不可用。OA 系统虽然当前宕机，但 DNS 记录暴露了企业内部 OA 系统的存在和 IP 地址。服务恢复后，未配置 HTTPS 的 OA 系统将面临明文传输风险。,"1. dig oa.bpeg.cn A +short → 218.249.223.100
+2. curl http://oa.bpeg.cn/ → 502
+3. curl https://oa.bpeg.cn/ → SSL Error","1. OA 系统应置于内网或 VPN 环境
+2. 配置 HTTPS
+3. 修复后端服务",2026-08-13 10:45:46
+44,MEDIUM,www.bpeg.cn,全部子域名缺失 X-Frame-Options / CSP / X-Content-Type-Options 等 5 个安全响应头,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,www.bpeg.cn、en.bpeg.cn、vpn.bpeg.cn 均缺失 X-Frame-Options、Content-Security-Policy、X-Content-Type-Options、Referrer-Policy、Permissions-Policy。虽然配置了 HSTS，但缺少其他安全头使网站面临 Clickjacking、MIME 嗅探、XSS 等攻击风险。,curl -I https://www.bpeg.cn/ | grep -iE 'x-frame|content-security|x-content-type|referrer|permissions',"add_header X-Frame-Options ""DENY"";
+add_header Content-Security-Policy ""default-src 'self'"";
+add_header X-Content-Type-Options ""nosniff"";
+add_header Referrer-Policy ""no-referrer-when-downgrade"";
+add_header Permissions-Policy ""geolocation=(), microphone=(), camera=()"";",2026-08-13 10:45:46
+45,MEDIUM,www.bpeg.cn,主站链接指向旧域名 www.bpeg.ceec.net.cn，存在子域名接管风险,CWE-350,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,主站页面包含 76 个指向 http://www.bpeg.ceec.net.cn/ 的链接，该域名属于 ceec.net.cn（中国能源建设集团）。如果该旧域名已过期或 DNS 记录未维护，攻击者可注册接管该域名，进而利用主站的信任关系实施钓鱼攻击。,"1. 访问 https://www.bpeg.cn/
+2. 搜索 href=""http://www.bpeg.ceec.net.cn
+3. 确认 76 个链接指向旧域名
+4. dig www.bpeg.ceec.net.cn A +short 检查域名状态","1. 确认旧域名 www.bpeg.ceec.net.cn 仍可控
+2. 将所有链接更新为新域名
+3. 配置旧域名 301 跳转到新域名",2026-08-13 10:45:46
+46,MEDIUM,www.bpeg.cn,VPN 网关 robots.txt 禁止全站爬取，暴露系统敏感性,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://vpn.bpeg.cn/robots.txt,https://vpn.bpeg.cn/robots.txt,vpn.bpeg.cn 的 robots.txt 配置为 'Disallow: /'，禁止所有搜索引擎爬取。虽然这本身是安全配置，但 robots.txt 的存在反而暴露了 VPN 系统的存在，攻击者可通过枚举 robots.txt 发现内部系统。,"curl https://vpn.bpeg.cn/robots.txt
+返回: User-agent: *
+Disallow: /",VPN 网关不应被搜索引擎索引，建议通过 meta 标签和 X-Robots-Tag 实现,2026-08-13 10:45:46
+47,MEDIUM,www.apcc2.ceec.net.cn,页面包含 71 个 HTTP 明文链接,CWE-319,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/,HTTPS 站点页面中包含 71 个 HTTP 明文链接，其中 39 个指向自身 http://www.apcc2.ceec.net.cn/，其余指向 mail.ceec.net.cn、www.ceec.net.cn、www.gov.cn 等外部域名。混合内容攻击可被中间人利用篡改页面内容。,"curl -s http://www.apcc2.ceec.net.cn/ | grep -o 'href=""http://[^""]*""' | wc -l",将所有 HTTP 链接改为 HTTPS，配置 CSP: upgrade-insecure-requests,2026-08-13 12:10:27
+48,MEDIUM,www.apcc2.ceec.net.cn,缺失 5 个安全响应头（X-Frame-Options/CSP/XCTO/Referrer-Policy/Permissions-Policy）,CWE-16,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/,虽然配置了 HSTS，但缺失 X-Frame-Options、Content-Security-Policy、X-Content-Type-Options、Referrer-Policy、Permissions-Policy 五个安全响应头。,curl -I http://www.apcc2.ceec.net.cn/ | grep -iE 'x-frame|content-security|x-content-type|referrer|permissions',"add_header X-Frame-Options ""DENY"";
+add_header Content-Security-Policy ""default-src 'self'"";
+add_header X-Content-Type-Options ""nosniff"";",2026-08-13 12:10:27
+49,MEDIUM,www.zmj.com,严重缺失 10 个安全响应头,CWE-16,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,参考 OWASP Secure Headers Project 一次性配置,2026-08-13 00:09:52
+50,MEDIUM,www.zmj.com,jQuery 3.4.1 存在已知 XSS (CVE-2020-11023/11022),CWE-79 / CWE-1104,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery >= 3.5.0,2026-08-13 00:09:58
+51,MEDIUM,www.apcc2.ceec.net.cn,jQuery 2.2.4 存在已知 XSS 漏洞（CVE-2020-11022 / CVE-2020-11023）,CWE-79,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/module/jslib/jquery/jquery.js,"网站使用 jQuery 2.2.4（/module/jslib/jquery/jquery.js，133KB），该版本存在两个已知 XSS 漏洞：
+- CVE-2020-11022：jQuery 在处理包含 <option> 元素的 HTML 时存在 XSS
+- CVE-2020-11023：jQuery .html() / .append() / .replaceWith() 在处理包含 <script> 标签的 HTML 时存在 XSS
+
+攻击者可通过构造恶意 HTML 内容，利用 jQuery 的 DOM 操作方法触发 XSS 攻击。由于该站点是 CMS 驱动的内容管理系统（含文章发布功能），如果存在用户可控的输入点（评论、搜索、投稿等），则 XSS 可被实际利用。","curl -s http://www.apcc2.ceec.net.cn/module/jslib/jquery/jquery.js | head -5
+# 确认 jQuery 2.2.4
+# CVE-2020-11022/11023 影响 jQuery < 3.5.0",升级 jQuery 到 3.7.1+,2026-08-13 12:10:27
+52,MEDIUM,www.mos400.com,无 MX 记录 — 邮件服务未配置，存在邮件欺诈风险,CWE-290,6.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N,https://www.mos400.com,https://www.mos400.com,缺少 MX 记录，且无 SPF/DMARC，攻击者可伪造该域名发送钓鱼邮件,,配置 SPF: v=spf1 -all 和 DMARC: v=DMARC1; p=reject,2026-08-13 00:10:46
+53,MEDIUM,www.zmj.com,"Cookie [lg] 不安全: 缺少 Secure, SameSite",CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,"添加: Secure, SameSite",2026-08-13 00:09:52
+54,MEDIUM,www.dahuatech.com,缺失响应头: Strict-Transport-Security — HSTS缺失,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,curl -I https://www.dahuatech.com | grep -i 'Strict-Transport-Security'  # 无返回,"Nginx: add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 00:09:52
+55,MEDIUM,www.dahuatech.com,jQuery < 3.5.0 XSS (CVE-2020-11023/11022),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,升级 jQuery 至最新版本,2026-08-13 00:10:02
+56,MEDIUM,www.zmj.com,缺失响应头: Strict-Transport-Security — HSTS缺失,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Strict-Transport-Security'  # 无返回,"Nginx: add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 00:09:50
+57,MEDIUM,www.zmj.com,jQuery < 3.5.0 XSS (CVE-2020-11023/11022),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery 至最新版本,2026-08-13 00:09:58
+58,LOW,www.mos400.com,缺少 SPF/DMARC 记录 — 邮件欺诈风险,CWE-290,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N,https://www.mos400.com,https://www.mos400.com,,,添加 TXT: v=spf1 -all 和 v=DMARC1; p=reject;,2026-08-13 00:10:46
+59,LOW,www.mos400.com,DNS 未启用 DNSSEC,CWE-345,4.3,CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N,https://www.mos400.com,https://www.mos400.com,,,在域名注册商处启用 DNSSEC,2026-08-13 00:10:46
+60,LOW,cht-group.net,OA 与 App 指向同一系统，增大攻击面,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,https://app.cht-group.net/,https://app.cht-group.net/,app.cht-group.net 和 oa.cht-group.net 返回完全相同页面(同一 Vue.js SPA)，暴露了多个攻击入口。,,如非必要，移除重复的子域名解析,2026-08-13 00:23:06
+61,LOW,cht-group.net,DNS 信息泄露 - 子域名暴露内部架构,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,http://cht-group.net/,http://cht-group.net/,DNS 解析暴露了 oa/portal/app/git/mail/monitor/img 共 7 个子域名。这些子域名直接暴露了企业内部 IT 架构，攻击者可据此绘制攻击地图。,,使用泛域名证书，减少子域名信息泄露,2026-08-13 00:23:06
+62,LOW,cht-group.net,缺少 SPF/DMARC 记录 - 邮件欺诈风险,CWE-290,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N,http://cht-group.net/,http://cht-group.net/,域名未配置 SPF 和 DMARC 记录，攻击者可伪造该域名发送钓鱼邮件。,,添加 TXT: v=spf1 -all 和 v=DMARC1; p=reject;,2026-08-13 00:23:06
+63,LOW,www.impc.com.cn,ERP 搜索表单暴露 siteID 参数,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://erp.impc.com.cn/,https://erp.impc.com.cn/,ERP 系统搜索表单包含 siteID 字段，该参数可能暴露站点 ID 等内部标识信息。,查看 erp.impc.com.cn 页面源代码，搜索 siteID,使用 Session 或 Token 替代明文 siteID 参数,2026-08-13 01:49:50
+64,LOW,www.impc.com.cn,SSO 单点登录系统内部错误 (500 Internal Server Error),CWE-N/A,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,https://sso.impc.com.cn/,https://sso.impc.com.cn/,sso.impc.com.cn 所有请求返回 500 Internal Server Error，服务不可用。SSO 作为关键基础设施，不可用状态影响所有关联系统的登录功能。,curl https://sso.impc.com.cn/,检查 SSO 服务状态，修复后端服务错误,2026-08-13 01:49:50
+65,LOW,www.impc.com.cn,平台门户系统内部错误 (500 Internal Server Error),CWE-N/A,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,https://platform.impc.com.cn/,https://platform.impc.com.cn/,platform.impc.com.cn 所有请求返回 500 Internal Server Error，服务不可用。,curl https://platform.impc.com.cn/,检查平台服务状态,2026-08-13 01:49:50
+66,LOW,www.impc.com.cn,监控系统内部错误 (500 Internal Server Error),CWE-N/A,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,https://monitor.impc.com.cn/,https://monitor.impc.com.cn/,monitor.impc.com.cn 所有请求返回 500 Internal Server Error，服务不可用。,curl https://monitor.impc.com.cn/,检查监控服务状态,2026-08-13 01:49:50
+67,LOW,www.impc.com.cn,邮件系统 502 错误,CWE-N/A,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,http://mail.impc.com.cn/,https://mail.impc.com.cn/,mail.impc.com.cn 返回 502 Bad Gateway，邮件系统不可用。,curl http://mail.impc.com.cn/,检查邮件服务器状态,2026-08-13 01:49:50
+68,LOW,www.impc.com.cn,视频系统 403 禁止访问,CWE-N/A,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L,https://video.impc.com.cn/,https://video.impc.com.cn/,video.impc.com.cn HTTPS 返回 403 Forbidden，HTTP 返回主站页面。视频系统配置异常。,curl https://video.impc.com.cn/,检查视频系统访问控制配置,2026-08-13 01:49:50
+69,LOW,www.sc.sgcc.com.cn,主站暴露 IPv6 地址,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,www.sc.sgcc.com.cn 解析到 IPv6 地址 240e:699:381:2::f100:1 和 IPv4 222.212.254.67。IPv6 地址暴露了网络段信息（240e:699:381:2::/64，中国电信 IPv6 段）。,dig www.sc.sgcc.com.cn AAAA +short,如不需要 IPv6，移除 AAAA 记录,2026-08-13 10:19:10
+70,LOW,www.sc.sgcc.com.cn,SPF 记录暴露内部 IP 段,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://www.sc.sgcc.com.cn/,http://www.sc.sgcc.com.cn/,TXT 记录 'v=spf1 ip4:210.77.176.0/24 ip4:210.77.177.0/24 ip4:210.72.236.0/24 -all' 暴露了 3 个内部 IP 段，攻击者可据此进行内网拓扑映射。,dig sc.sgcc.com.cn TXT +short,评估是否需要缩小 SPF IP 范围,2026-08-13 10:19:10
+71,LOW,www.bpeg.cn,Server 响应头泄露华为云 WAF 标识 (CW),CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,www.bpeg.cn 和 en.bpeg.cn 的 Server 响应头为 'CW'，这是华为云 WAF 的标识。虽然不是精确版本号，但泄露了 WAF 厂商信息，有助于攻击者针对性绕过 WAF 规则。,curl -I https://www.bpeg.cn/ | grep Server,配置 WAF 隐藏 Server 响应头,2026-08-13 10:45:46
+72,LOW,www.bpeg.cn,VPN 网关 Server 响应头为 'Server'（异常值）,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://vpn.bpeg.cn/,https://vpn.bpeg.cn/,vpn.bpeg.cn 的 Server 响应头为 'Server'，这不是标准的 Web 服务器标识（非 Nginx/Apache/IIS），可能是自研或定制 VPN 网关产品。该异常值本身泄露了使用非标准服务器，增加了被针对性攻击的风险。,curl -I https://vpn.bpeg.cn/ | grep Server,隐藏或修改 Server 响应头,2026-08-13 10:45:46
+73,LOW,www.bpeg.cn,主站页面泄露电话号码,CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.bpeg.cn/,https://www.bpeg.cn/,主站页面中包含电话号码 041110230897、041009255897，这些号码可能是企业内部联系方式。,访问 https://www.bpeg.cn/ 并查看页面源代码,评估是否需要在页面中暴露内部电话号码,2026-08-13 10:45:46
+74,LOW,www.apcc2.ceec.net.cn,Server 响应头泄露华为云 WAF 标识 (CW),CWE-200,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,http://www.apcc2.ceec.net.cn/,http://www.apcc2.ceec.net.cn/,Server: CW，泄露使用华为云 WAF,curl -I http://www.apcc2.ceec.net.cn/ | grep Server,隐藏 Server 响应头,2026-08-13 12:10:27
+75,LOW,www.dahuatech.com,页面暴露 2 个企业邮箱: support@dahuatech.com,CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,使用联系表单代替直接暴露邮箱,2026-08-13 00:09:55
+76,LOW,www.mos400.com,代理错误信息泄露: Forwarding error: connection closed before message completed,CWE-209,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.mos400.com,https://www.mos400.com,,,配置自定义错误页面，隐藏内部错误信息,2026-08-13 00:10:47
+77,LOW,www.dahuatech.com,HTTP 明文链接: http://isdp.dahuatech.com/easywork/web/outsourcer/login,CWE-319,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.dahuatech.com,https://www.dahuatech.com,,,升级为 HTTPS,2026-08-13 00:10:03
+78,LOW,www.zmj.com,HTTP 明文链接: http://www.zmjbid.com/,CWE-319,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级为 HTTPS,2026-08-13 00:10:00
+79,LOW,www.dahuatech.com,SSL 异常: timed out,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:52
+80,LOW,www.zmj.com,SSL 异常: timed out,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:49
+81,INFO,cht-group.net,技术栈: Vue.js + Element UI + Nginx + 钉钉 SDK + 七牛云 CDN + 阿里云企业邮箱,,,,https://oa.cht-group.net/,https://oa.cht-group.net/,"OA: Vue.js SPA + Element UI + 钉钉 H5 登录 SDK v0.21.0
 Portal: React + Vite + 指标口径数据平台
 CDN: 七牛云
 邮件: 阿里云企业邮箱
 监控: 阿里云 SASE 云安全
 基础设施: 阿里云 ECS (120.26.82.91, 120.55.64.59)",,,2026-08-13 00:23:06
-54,INFO,cht-group.net,子域名全景: oa/portal/app/git/mail/monitor/img 共 7 个子域名,,,,http://cht-group.net/,http://cht-group.net/,"oa.cht-group.net -> 120.26.82.91 (OA系统)
+82,INFO,cht-group.net,子域名全景: oa/portal/app/git/mail/monitor/img 共 7 个子域名,,,,http://cht-group.net/,http://cht-group.net/,"oa.cht-group.net -> 120.26.82.91 (OA系统)
 portal.cht-group.net -> 120.26.82.91 (指标门户)
 app.cht-group.net -> 120.26.82.91 (同OA)
 git.cht-group.net -> 120.55.64.59 (代码仓库)
 mail.cht-group.net -> 阿里云企业邮箱
 monitor.cht-group.net -> 阿里云SASE
 img.cht-group.net -> 七牛云CDN",,,2026-08-13 00:23:06
-55,INFO,dahuatech.com,"DNS: 119.3.116.73, 119.3.117.249, 119.3.117.247, 119.3.116.93",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:41
-56,INFO,dahuatech.com,"HTTP 200, 217382B, https://www.dahuatech.com/",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:42
-57,INFO,dahuatech.com,安全头正常: X-Frame-Options = DENY,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:52
-58,INFO,dahuatech.com,安全头正常: X-Content-Type-Options = nosniff,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:53
-59,INFO,dahuatech.com,安全头正常: X-XSS-Protection = 1; mode=block,CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:54
-60,INFO,dahuatech.com,"技术栈: PHP, jQuery, Spring",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:10:02
-61,INFO,mos400.com,域名已注册但 Web 服务未部署,CWE-N/A,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.mos400.com,https://www.mos400.com,DNS 探测发现域名已注册但无可用 Web 服务，建议确认域名用途并正确配置,,联系域名管理员确认服务配置,2026-08-13 00:10:47
-62,INFO,zmj.com,DNS: 39.97.3.174,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
-63,INFO,zmj.com,"HTTP 200, 11484B, https://www.zmj.com/",CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
-64,INFO,zmj.com,敏感路径可访问: /robots.txt (robots.txt),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com/robots.txt,https://www.zmj.com,/robots.txt 可被公开访问,curl https://www.zmj.com/robots.txt,限制 /robots.txt 访问权限,2026-08-13 00:09:57
-65,INFO,zmj.com,技术栈: jQuery,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:58
+83,INFO,www.impc.com.cn,子域名全景: 18 个子域名，覆盖 OA/ERP/SSO/VPN/邮件/招聘/监控/视频/办公/调度,,,,https://www.impc.com.cn/,,"主站: www.impc.com.cn (218.202.141.106)
+OA: oa.impc.com.cn (218.202.141.104) - 蒙电e联
+ERP: erp.impc.com.cn (218.202.141.125) - 内蒙古电力集团
+SSO: sso.impc.com.cn (218.202.141.117) - 500
+VPN: vpn.impc.com.cn (218.202.141.77) - 工程造价审计系统
+邮件: mail.impc.com.cn (218.202.141.69) - 502
+招聘: zhaopin.impc.com.cn (218.202.141.74) - 人力资源招聘系统
+平台: platform.impc.com.cn (218.202.141.117) - 500
+监控: monitor.impc.com.cn (218.202.141.117) - 500
+视频: video.impc.com.cn (218.202.141.106)
+办公: office.impc.com.cn (218.202.141.104) - 同OA
+调度: oms.impc.com.cn - 呼供掌上调度
+基础架构: 内蒙古联通 IP 段 218.202.141.x",,,2026-08-13 01:49:50
+84,INFO,www.impc.com.cn,技术栈: Nginx 1.24.0 / openresty 1.19.9.1 / nginx 1.29.8 / MaxServer / Vue.js / Element UI,,,,https://www.impc.com.cn/,,"主站: nginx/1.24.0 (服务端渲染)
+OA: MaxServer (未知服务器) + Vue.js
+ERP: openresty/1.19.9.1 + Vue.js
+OMS: nginx/1.29.8 + Vue.js
+VPN: Vue.js SPA
+招聘: Vue.js SPA
+DNS: 中科三方云 (zdnscloud.net)
+基础设施: 内蒙古联通 IP 段",,,2026-08-13 01:49:50
+85,INFO,www.sc.sgcc.com.cn,子域名全景: 4 个子域名，全部 502,,,,http://www.sc.sgcc.com.cn/,,"www.sc.sgcc.com.cn (222.212.254.67) - 主站 502
+mail.sc.sgcc.com.cn (222.212.254.68) - 邮件 502
+95598.sc.sgcc.com.cn (222.212.254.69) - 供电服务 502
+weixin.sc.sgcc.com.cn (222.212.254.79) - 微信端 502
+DNS: dl-dns1~6.sgcc.cn + ns.sc.sgcc.com.cn
+MX: mailgw.sgcc.com.cn
+所有 IP 属于 222.212.254.x 段（四川电信）",,,2026-08-13 10:19:10
+86,INFO,www.sc.sgcc.com.cn,技术栈: Go 反向代理（疑似 Caddy/Traefik）+ 后端服务不可达,,,,http://www.sc.sgcc.com.cn/,,根据 502 错误信息 'Forwarding error: connection closed before message completed' 推断使用 Go 语言反向代理。无 Server 响应头泄露。HTTPS 完全不可用。DNS 由国家电网统一 DNS 服务（dl-dns1~6.sgcc.cn）管理。,,,2026-08-13 10:19:10
+87,INFO,www.bpeg.cn,子域名全景: 4 个子域名 (www/oa/vpn/en),,,,https://www.bpeg.cn/,,"www.bpeg.cn (124.70.125.x, 华为云) - 主站 200 OK
+oa.bpeg.cn (218.249.223.100, 北京联通) - 502 宕机
+vpn.bpeg.cn (218.249.223.69, 北京联通) - SSL VPN 网关 200
+en.bpeg.cn (116.205.x.x, 华为云) - 英文站 200
+DNS: ns.dns.net.cn / ns7.dns.net.cn
+MX: mail.bpeg.cn
+企业: 北京电力设备总厂有限公司",,,2026-08-13 10:45:46
+88,INFO,www.bpeg.cn,技术栈: 华为云 WAF + Nginx + jQuery + SSL VPN 网关,,,,https://www.bpeg.cn/,,"主站/英文站: 华为云 WAF (Server: CW, HWWAFSESID) + Nginx + jQuery + HSTS 已启用
+VPN: 自研 SSL VPN 网关 (Server: Server) + common.min.js / common.js / 64sys.js
+OA: 后端不可达 (502)
+基础设施: 华为云 (124.70.x.x / 116.205.x.x) + 北京联通 (218.249.223.x)",,,2026-08-13 10:45:46
+89,INFO,www.apcc2.ceec.net.cn,ceec.net.cn 子域名全景: 11 个子域名，4 个泄露内网IP,,,,dig ceec.net.cn ANY,,"www.apcc2.ceec.net.cn (华为云WAF) - 主站 200 OK
+en.ceec.net.cn (华为云WAF) - 英文站
+mail.ceec.net.cn (QQ企业邮箱) - ssl.exmail.qq.com
+smtp.ceec.net.cn (QQ企业邮箱) - xcsmtp.exmail.qq.com
+pop.ceec.net.cn (QQ企业邮箱) - pop.exmail.qq.com
+ns1.ceec.net.cn (106.39.22.66) - DNS服务器
+api.ceec.net.cn → 10.1.1.244 [内网IP!]
+app.ceec.net.cn → 10.11.4.136 [内网IP!]
+hr.ceec.net.cn → 10.1.8.21 [内网IP!]
+ai.ceec.net.cn → 10.1.12.61 [内网IP!]
+zhaopin.ceec.net.cn (华为云WAF) - 招聘系统",,,2026-08-13 12:10:27
+90,INFO,www.apcc2.ceec.net.cn,技术栈: 华为云WAF + jQuery 2.2.4 + URITE CMS + SuperSlide,,,,http://www.apcc2.ceec.net.cn/,,"WAF: 华为云 WAF (Server: CW, HWWAFSESID, CNAME: vip1.huaweicloudwaf.com)
+前端: jQuery 2.2.4 + SuperSlide 2.1 + Swiper + URITE CMS
+CDN: 华为云 (117.78.24.x / 49.4.56.x)
+邮件: 腾讯企业邮箱 (exmail.qq.com)
+CMS: URITE 内容管理系统 (/module/jslib/urite/urite.min.js)",,,2026-08-13 12:10:27
+91,INFO,www.zmj.com,敏感路径可访问: /robots.txt (robots.txt),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com/robots.txt,https://www.zmj.com,/robots.txt 可被公开访问,curl https://www.zmj.com/robots.txt,限制 /robots.txt 访问权限,2026-08-13 00:09:57
+92,INFO,www.dahuatech.com,"DNS: 119.3.116.73, 119.3.117.249, 119.3.117.247, 119.3.116.93",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:41
+93,INFO,www.dahuatech.com,"HTTP 200, 217382B, https://www.dahuatech.com/",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:09:42
+94,INFO,www.dahuatech.com,"技术栈: PHP, jQuery, Spring",CWE-N/A,N/A,,https://www.dahuatech.com,https://www.dahuatech.com,,,,2026-08-13 00:10:02
+95,INFO,www.zmj.com,DNS: 39.97.3.174,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
+96,INFO,www.zmj.com,"HTTP 200, 11484B, https://www.zmj.com/",CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
+97,INFO,www.zmj.com,技术栈: jQuery,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:58
+98,INFO,www.mos400.com,域名已注册但 Web 服务未部署,CWE-N/A,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.mos400.com,https://www.mos400.com,DNS 探测发现域名已注册但无可用 Web 服务，建议确认域名用途并正确配置,,联系域名管理员确认服务配置,2026-08-13 00:10:47
