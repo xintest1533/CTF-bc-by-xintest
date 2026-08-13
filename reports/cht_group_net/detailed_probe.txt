@@ -1,0 +1,19 @@
+OA 页面内容 (前2000字):
+<!DOCTYPE html><html lang=""><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no"><meta name="renderer" content="webkit"><meta http-equiv="Expires" content="0"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Cache-control" content="no-cache"><meta http-equiv="Cache" content="no-cache"><link rel="icon" href="/favicon.ico"><title>扬腾OA管理系统</title><meta name="buildTime" content="2026-07-14 18:06:24"><link rel="stylesheet" href="/static/element-ui-theme-chalk_index.min.css"><link href="/js/chunk-05851ef1.e3f31d2f.js" rel="prefetch"><link href="/js/chunk-06c22557.fe570db9.js" rel="prefetch"><link href="/js/chunk-10a9e781.bcb033b3.js" rel="prefetch"><link href="/js/chunk-1a52bdc8.a3b74159.js" rel="prefetch"><link href="/js/chunk-1b8ca769.a844f60c.js" rel="prefetch"><link href="/js/chunk-1b94a700.56767f82.js" rel="prefetch"><link href="/js/chunk-1c539b56.bd0e373f.js" rel="prefetch"><link href="/js/chunk-26a385ca.5bb0165f.js" rel="prefetch"><link href="/js/chunk-2b05900e.c4476989.js" rel="prefetch"><link href="/js/chunk-2d0b9650.dbaf5caf.js" rel="prefetch"><link href="/js/chunk-2d0d3714.15cf1f86.js" rel="prefetch"><link href="/js/chunk-2d0e99a2.4b85cbf4.js" rel="prefetch"><link href="/js/chunk-309603b6.a01d9b49.js" rel="prefetch"><link href="/js/chunk-35110937.cc722783.js" rel="prefetch"><link href="/js/chunk-3c0410f2.4330e00e.js" rel="prefetch"><link href="/js/chunk-3cf99957.3b3be8a4.js" rel="prefetch"><link href="/js/chunk-41248d98.2238d65e.js" rel="prefetch"><link href="/js/chunk-42a11fbb.f5800bf4.js" rel="prefetch"><link href="/js/chunk-457f7820.a6547fed.js" rel="prefetch"><link href="/js/chunk-4c64b66e.d239d70f.js" rel="prefetch"><link href="/js/chunk-4d3ac4e4.c60ad424.js" rel="prefetch"><link href="/js/chunk-4f295ab8.30dca0df.js" rel="prefetch"><l
+
+Portal 页面内容:
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>指标口径</title>
+    <script type="module" crossorigin src="/assets/index-81nL161j.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-eBMwJ1nC.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
