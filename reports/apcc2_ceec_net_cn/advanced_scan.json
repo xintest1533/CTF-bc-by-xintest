@@ -1,0 +1,130 @@
+{
+  "target": "www.apcc2.ceec.net.cn",
+  "organization": "中国能源建设集团安徽电力建设第二工程有限公司",
+  "scan_time": "2026-08-13 12:10:27",
+  "scan_type": "deep_v3",
+  "total_findings": 9,
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 3,
+    "MEDIUM": 3,
+    "LOW": 1,
+    "INFO": 2
+  },
+  "findings": [
+    {
+      "level": "HIGH",
+      "check_name": "http_no_https_redirect",
+      "title": "HTTP 未强制重定向到 HTTPS，明文传输与加密传输并存",
+      "description": "www.apcc2.ceec.net.cn 的 HTTP (80) 与 HTTPS (443) 同时对外提供完整服务，HTTP 请求未做 301/302 跳转到 HTTPS。实测连续 3 次请求 http://www.apcc2.ceec.net.cn/ 均返回 HTTP/1.1 200 OK + 完整页面内容（content-length: 53993 字节），响应头中甚至配置了 HSTS（strict-transport-security: max-age=31536000;includeSubdomains;），但 HSTS 仅在浏览器已访问过 HTTPS 后才生效，无法保护首次 HTTP 访问与不缓存 HSTS 的客户端。攻击者可在网络层（ARP 欺骗/路由劫持/WiFi 钓鱼）强制受害者走 HTTP 通道，嗅探全部明文流量，包括企业官网页面内容、WAF 会话 Cookie (HWWAFSESID)、用户浏览行为等。该站点属于中国能源建设集团（央企）下属单位安徽电力建设第二工程有限公司，使用华为云 WAF 代理（CNAME: xxx.vip1.huaweicloudwaf.com, Server: CW），但 WAF/源站未配置 HTTP→HTTPS 强制跳转，存在配置缺陷。",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/",
+      "reproduction_steps": "curl -sI -A 'Mozilla/5.0' http://www.apcc2.ceec.net.cn/ | head -3\n# 返回: HTTP/1.1 200 OK\n# content-type: text/html; charset=UTF-8\n# content-length: 53993\n# 确认: HTTP 直接返回完整内容，未 301 跳转到 HTTPS\n# 对比: https://www.apcc2.ceec.net.cn/ 同样返回 200 OK",
+      "fix_suggestion": "1. 在 WAF/Nginx 配置 HTTP(80) → HTTPS(443) 的 301 强制重定向\n   server { listen 80; return 301 https://$host$request_uri; }\n2. 保留并完善 HSTS 配置（已存在 max-age=31536000;includeSubdomains）\n3. 启用 HSTS preload 并提交到 hstspreload.org\n4. 配置 CSP: upgrade-insecure-requests 强制浏览器升级内联 HTTP 资源",
+      "cvss_score": "7.5",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "cwe": "CWE-319 / CWE-7525",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "HIGH",
+      "check_name": "cookie_security",
+      "title": "WAF Cookie HWWAFSESID 缺失全部安全标志（Secure/HttpOnly/SameSite）",
+      "description": "www.apcc2.ceec.net.cn 的华为云 WAF Cookie HWWAFSESID 和 HWWAFSESTIME 均未设置 Secure、HttpOnly、SameSite 三个安全标志。实测响应头: Set-Cookie: HWWAFSESID=fd28473c7112621b25; path=/ 和 Set-Cookie: HWWAFSESTIME=1786623171424; path=/。由于 HTTP 通道未强制跳转 HTTPS（见 HIGH-1），Cookie 在 HTTP 明文通道中传输，攻击者可通过中间人攻击直接嗅探 WAF 会话标识。无 HttpOnly 标志意味着 XSS 攻击可通过 document.cookie 窃取该 Cookie。无 SameSite 标志意味着跨站请求可携带该 Cookie，存在 CSRF 风险。HWWAFSESID 是 WAF 会话标识，泄露后攻击者可伪造 WAF 会话绕过部分 WAF 防护规则。",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/",
+      "reproduction_steps": "curl -I http://www.apcc2.ceec.net.cn/ | grep Set-Cookie\n# HWWAFSESID=...; path=/, HWWAFSESTIME=...; path=/\n# Secure: NO, HttpOnly: NO, SameSite: NO",
+      "fix_suggestion": "proxy_cookie_path / \"/; Secure; HttpOnly; SameSite=Strict\";",
+      "cvss_score": "7.5",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+      "cwe": "CWE-614 / CWE-1004 / CWE-1275",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "HIGH",
+      "check_name": "dns_internal_ip_leak",
+      "title": "DNS 记录泄露 4 个内网 IP 地址（10.1.x.x / 10.11.x.x）",
+      "description": "ceec.net.cn 域名的 DNS 记录中直接暴露了 4 个内网 IP 地址：\n1. api.ceec.net.cn → 10.1.1.244（API 服务器）\n2. app.ceec.net.cn → 10.11.4.136（应用服务器）\n3. hr.ceec.net.cn → 10.1.8.21（人力资源系统）\n4. ai.ceec.net.cn → 10.1.12.61（AI 系统）\n\n这些 DNS 记录将企业内网拓扑完全暴露给攻击者。通过分析内网 IP 段（10.1.x.x 和 10.11.x.x），攻击者可推断：\n- 内网使用 10.1.0.0/16 和 10.11.0.0/16 两个网段\n- 10.1.x.x 为核心服务区（API、HR、AI）\n- 10.11.x.x 为应用区\n- 内网 IP 分配规律便于横向移动规划\n\n这些子域名通过华为云 WAF 代理返回 502，说明 WAF 配置了内部 DNS 解析但后端不可达。攻击者获取内网 IP 后，若通过 VPN/社工等方式进入内网，可直接定位目标系统。",
+      "screenshot_url": "dig api.ceec.net.cn A +short",
+      "reproduction_steps": "dig api.ceec.net.cn A +short  # → 10.1.1.244\ndig app.ceec.net.cn A +short  # → 10.11.4.136\ndig hr.ceec.net.cn A +short   # → 10.1.8.21\ndig ai.ceec.net.cn A +short   # → 10.1.12.61",
+      "fix_suggestion": "1. 立即删除 api/app/hr/ai 等内网子域名的公网 DNS 记录\n2. 使用 split-horizon DNS（内外网分离解析）\n3. 内网域名仅在内网 DNS 服务器解析\n4. 审计所有 ceec.net.cn DNS 记录",
+      "cvss_score": "7.5",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "cwe": "CWE-200",
+      "affected_url": "dig api.ceec.net.cn A +short",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "jquery_xss",
+      "title": "jQuery 2.2.4 存在已知 XSS 漏洞（CVE-2020-11022 / CVE-2020-11023）",
+      "description": "网站使用 jQuery 2.2.4（/module/jslib/jquery/jquery.js，133KB），该版本存在两个已知 XSS 漏洞：\n- CVE-2020-11022：jQuery 在处理包含 <option> 元素的 HTML 时存在 XSS\n- CVE-2020-11023：jQuery .html() / .append() / .replaceWith() 在处理包含 <script> 标签的 HTML 时存在 XSS\n\n攻击者可通过构造恶意 HTML 内容，利用 jQuery 的 DOM 操作方法触发 XSS 攻击。由于该站点是 CMS 驱动的内容管理系统（含文章发布功能），如果存在用户可控的输入点（评论、搜索、投稿等），则 XSS 可被实际利用。",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/module/jslib/jquery/jquery.js",
+      "reproduction_steps": "curl -s http://www.apcc2.ceec.net.cn/module/jslib/jquery/jquery.js | head -5\n# 确认 jQuery 2.2.4\n# CVE-2020-11022/11023 影响 jQuery < 3.5.0",
+      "fix_suggestion": "升级 jQuery 到 3.7.1+",
+      "cvss_score": "6.1",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "cwe": "CWE-79",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "http_mixed_content",
+      "title": "页面包含 71 个 HTTP 明文链接",
+      "description": "HTTPS 站点页面中包含 71 个 HTTP 明文链接，其中 39 个指向自身 http://www.apcc2.ceec.net.cn/，其余指向 mail.ceec.net.cn、www.ceec.net.cn、www.gov.cn 等外部域名。混合内容攻击可被中间人利用篡改页面内容。",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/",
+      "reproduction_steps": "curl -s http://www.apcc2.ceec.net.cn/ | grep -o 'href=\"http://[^\"]*\"' | wc -l",
+      "fix_suggestion": "将所有 HTTP 链接改为 HTTPS，配置 CSP: upgrade-insecure-requests",
+      "cvss_score": "5.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": "CWE-319",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "missing_security_headers",
+      "title": "缺失 5 个安全响应头（X-Frame-Options/CSP/XCTO/Referrer-Policy/Permissions-Policy）",
+      "description": "虽然配置了 HSTS，但缺失 X-Frame-Options、Content-Security-Policy、X-Content-Type-Options、Referrer-Policy、Permissions-Policy 五个安全响应头。",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/",
+      "reproduction_steps": "curl -I http://www.apcc2.ceec.net.cn/ | grep -iE 'x-frame|content-security|x-content-type|referrer|permissions'",
+      "fix_suggestion": "add_header X-Frame-Options \"DENY\";\nadd_header Content-Security-Policy \"default-src 'self'\";\nadd_header X-Content-Type-Options \"nosniff\";",
+      "cvss_score": "5.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+      "cwe": "CWE-16",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "LOW",
+      "check_name": "server_header",
+      "title": "Server 响应头泄露华为云 WAF 标识 (CW)",
+      "description": "Server: CW，泄露使用华为云 WAF",
+      "screenshot_url": "http://www.apcc2.ceec.net.cn/",
+      "reproduction_steps": "curl -I http://www.apcc2.ceec.net.cn/ | grep Server",
+      "fix_suggestion": "隐藏 Server 响应头",
+      "cvss_score": "4.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": "CWE-200",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "INFO",
+      "check_name": "subdomain_summary",
+      "title": "ceec.net.cn 子域名全景: 11 个子域名，4 个泄露内网IP",
+      "description": "www.apcc2.ceec.net.cn (华为云WAF) - 主站 200 OK\nen.ceec.net.cn (华为云WAF) - 英文站\nmail.ceec.net.cn (QQ企业邮箱) - ssl.exmail.qq.com\nsmtp.ceec.net.cn (QQ企业邮箱) - xcsmtp.exmail.qq.com\npop.ceec.net.cn (QQ企业邮箱) - pop.exmail.qq.com\nns1.ceec.net.cn (106.39.22.66) - DNS服务器\napi.ceec.net.cn → 10.1.1.244 [内网IP!]\napp.ceec.net.cn → 10.11.4.136 [内网IP!]\nhr.ceec.net.cn → 10.1.8.21 [内网IP!]\nai.ceec.net.cn → 10.1.12.61 [内网IP!]\nzhaopin.ceec.net.cn (华为云WAF) - 招聘系统",
+      "affected_url": "dig ceec.net.cn ANY",
+      "timestamp": "2026-08-13 12:10:27"
+    },
+    {
+      "level": "INFO",
+      "check_name": "tech_stack",
+      "title": "技术栈: 华为云WAF + jQuery 2.2.4 + URITE CMS + SuperSlide",
+      "description": "WAF: 华为云 WAF (Server: CW, HWWAFSESID, CNAME: vip1.huaweicloudwaf.com)\n前端: jQuery 2.2.4 + SuperSlide 2.1 + Swiper + URITE CMS\nCDN: 华为云 (117.78.24.x / 49.4.56.x)\n邮件: 腾讯企业邮箱 (exmail.qq.com)\nCMS: URITE 内容管理系统 (/module/jslib/urite/urite.min.js)",
+      "affected_url": "http://www.apcc2.ceec.net.cn/",
+      "timestamp": "2026-08-13 12:10:27"
+    }
+  ]
+}

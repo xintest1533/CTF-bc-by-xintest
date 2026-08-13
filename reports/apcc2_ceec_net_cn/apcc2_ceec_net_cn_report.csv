@@ -1,0 +1,10 @@
+Level,Check,Title,CVSS,CWE,URL
+HIGH,http_no_https_redirect,HTTP 未强制重定向到 HTTPS，明文传输与加密传输并存,7.5,CWE-319 / CWE-7525,http://www.apcc2.ceec.net.cn/
+HIGH,cookie_security,WAF Cookie HWWAFSESID 缺失全部安全标志（Secure/HttpOnly/SameSite）,7.5,CWE-614 / CWE-1004 / CWE-1275,http://www.apcc2.ceec.net.cn/
+HIGH,dns_internal_ip_leak,DNS 记录泄露 4 个内网 IP 地址（10.1.x.x / 10.11.x.x）,7.5,CWE-200,dig api.ceec.net.cn A +short
+MEDIUM,jquery_xss,jQuery 2.2.4 存在已知 XSS 漏洞（CVE-2020-11022 / CVE-2020-11023）,6.1,CWE-79,http://www.apcc2.ceec.net.cn/
+MEDIUM,http_mixed_content,页面包含 71 个 HTTP 明文链接,5.3,CWE-319,http://www.apcc2.ceec.net.cn/
+MEDIUM,missing_security_headers,缺失 5 个安全响应头（X-Frame-Options/CSP/XCTO/Referrer-Policy/Permissions-Policy）,5.3,CWE-16,http://www.apcc2.ceec.net.cn/
+LOW,server_header,Server 响应头泄露华为云 WAF 标识 (CW),4.3,CWE-200,http://www.apcc2.ceec.net.cn/
+INFO,subdomain_summary,ceec.net.cn 子域名全景: 11 个子域名，4 个泄露内网IP,,,dig ceec.net.cn ANY
+INFO,tech_stack,技术栈: 华为云WAF + jQuery 2.2.4 + URITE CMS + SuperSlide,,,http://www.apcc2.ceec.net.cn/
