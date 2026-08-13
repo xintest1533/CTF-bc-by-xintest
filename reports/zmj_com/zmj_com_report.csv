@@ -1,0 +1,28 @@
+﻿#,等级,检查项,标题,CWE,CVSS,CVSS向量,受影响URL,截图URL,描述,复现步骤,修复建议,时间
+1,HIGH,sql_query_exposure,搜索功能暴露完整 SQL 查询结构，泄露数据库 Schema,CWE-209 / CWE-89,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N,https://www.zmj.com/search/?q=test123,https://www.zmj.com,"搜索接口响应中暴露完整 SQL 语句: ay_model d ON b.mcode=d.mcode LEFT JOIN ay_content_ext e ON a.id=e.contentid WHERE(a.scode in ('5','6','7','16') OR a.subscode='5') AND(a.status=1 AND d.type=2 AND a.date<'2026-08-13 08:09:53') AND(q like '%test123%' )   </div>
+    <div id=""time"" style=""font-size:14px;color:#999999;""></div>
+</div>
+
+",curl 'https://www.zmj.com/search/?q=test123' | grep like,禁止在响应中返回 SQL 语句，使用参数化查询,2026-08-13 00:09:53
+2,MEDIUM,security_headers,缺失响应头: Strict-Transport-Security — HSTS缺失,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Strict-Transport-Security'  # 无返回,"Nginx: add_header Strict-Transport-Security ""max-age=31536000; includeSubDomains; preload"";",2026-08-13 00:09:50
+3,MEDIUM,security_headers,缺失响应头: X-Frame-Options — Clickjacking风险,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-Frame-Options'  # 无返回,"Nginx: add_header X-Frame-Options ""DENY"";",2026-08-13 00:09:50
+4,MEDIUM,security_headers,缺失响应头: Content-Security-Policy — CSP缺失,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Content-Security-Policy'  # 无返回,"Nginx: add_header Content-Security-Policy ""default-src 'self'"";",2026-08-13 00:09:50
+5,MEDIUM,no_security_headers,严重缺失 10 个安全响应头,CWE-16,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,参考 OWASP Secure Headers Project 一次性配置,2026-08-13 00:09:52
+6,MEDIUM,cookie_insecure,"Cookie [lg] 不安全: 缺少 Secure, SameSite",CWE-614 / CWE-1004,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,"添加: Secure, SameSite",2026-08-13 00:09:52
+7,MEDIUM,jquery_xss,jQuery 3.4.1 存在已知 XSS (CVE-2020-11023/11022),CWE-79 / CWE-1104,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery >= 3.5.0,2026-08-13 00:09:58
+8,MEDIUM,cms_vuln_hint,jQuery < 3.5.0 XSS (CVE-2020-11023/11022),CWE-1104,N/A,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,升级 jQuery 至最新版本,2026-08-13 00:09:58
+9,MEDIUM,dangerous_http_methods,"允许危险 HTTP 方法: PUT, DELETE, PATCH, CONNECT",CWE-749,4.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,curl -X PUT https://www.zmj.com -v,仅允许 GET/POST/HEAD 方法,2026-08-13 00:09:59
+10,MEDIUM,robots_misconfig,robots.txt 禁止全站爬取,CWE-538,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com,https://www.zmj.com,,,检查 robots.txt 配置,2026-08-13 00:09:59
+11,LOW,ssl_cert,SSL 异常: timed out,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:49
+12,LOW,security_headers,缺失响应头: X-Content-Type-Options — MIME嗅探风险,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-Content-Type-Options'  # 无返回,"Nginx: add_header X-Content-Type-Options ""nosniff"";",2026-08-13 00:09:50
+13,LOW,security_headers,缺失响应头: Referrer-Policy — Referrer泄露,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Referrer-Policy'  # 无返回,"Nginx: add_header Referrer-Policy ""strict-origin-when-cross-origin"";",2026-08-13 00:09:51
+14,LOW,security_headers,缺失响应头: Permissions-Policy — 权限未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Permissions-Policy'  # 无返回,"Nginx: add_header Permissions-Policy ""geolocation=(), microphone=(), camera=()"";",2026-08-13 00:09:51
+15,LOW,security_headers,缺失响应头: Cross-Origin-Resource-Policy — 资源可跨域加载,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Resource-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Resource-Policy ""same-origin"";",2026-08-13 00:09:51
+16,LOW,security_headers,缺失响应头: Cross-Origin-Opener-Policy — 跨域opener未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Opener-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Opener-Policy ""same-origin"";",2026-08-13 00:09:51
+17,LOW,security_headers,缺失响应头: Cross-Origin-Embedder-Policy — 跨域资源未限制,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'Cross-Origin-Embedder-Policy'  # 无返回,"Nginx: add_header Cross-Origin-Embedder-Policy ""require-corp"";",2026-08-13 00:09:52
+18,LOW,security_headers,缺失响应头: X-XSS-Protection — 旧版XSS过滤未启用,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,curl -I https://www.zmj.com | grep -i 'X-XSS-Protection'  # 无返回,"Nginx: add_header X-XSS-Protection ""1; mode=block"";",2026-08-13 00:09:52
+19,LOW,external_http_link,HTTP 明文链接: http://www.zmjbid.com/,CWE-319,6.1,CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N,https://www.zmj.com,https://www.zmj.com,,,升级为 HTTPS,2026-08-13 00:10:00
+20,INFO,dns_resolve,DNS: 39.97.3.174,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
+21,INFO,http_basics,"HTTP 200, 11484B, https://www.zmj.com/",CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:39
+22,INFO,sensitive_path,敏感路径可访问: /robots.txt (robots.txt),CWE-200,5.3,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N,https://www.zmj.com/robots.txt,https://www.zmj.com,/robots.txt 可被公开访问,curl https://www.zmj.com/robots.txt,限制 /robots.txt 访问权限,2026-08-13 00:09:57
+23,INFO,cms_fingerprint,技术栈: jQuery,CWE-N/A,N/A,,https://www.zmj.com,https://www.zmj.com,,,,2026-08-13 00:09:58
