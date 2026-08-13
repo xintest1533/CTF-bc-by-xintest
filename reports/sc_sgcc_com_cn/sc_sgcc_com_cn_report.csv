@@ -1,0 +1,10 @@
+Level,Check,Title,CVSS,CWE,URL
+HIGH,https_unavailable,所有子域名 HTTPS 完全不可用，SSL 证书未配置,7.5,CWE-319 / CWE-295,https://www.sc.sgcc.com.cn/
+HIGH,all_services_down,全部 4 个子域名服务宕机 (502 Bad Gateway),7.5,CWE-N/A,http://www.sc.sgcc.com.cn/
+MEDIUM,missing_security_headers,所有子域名缺失全部安全响应头,5.3,CWE-16,http://www.sc.sgcc.com.cn/
+MEDIUM,infrastructure_info_leak,502 错误信息泄露基础设施架构（Go 反向代理）,5.3,CWE-200,http://www.sc.sgcc.com.cn/
+MEDIUM,no_ports_open,所有服务器仅开放 HTTP 80 端口，其余端口全部关闭,5.3,CWE-16,http://www.sc.sgcc.com.cn/
+LOW,ipv6_exposed,主站暴露 IPv6 地址,4.3,CWE-200,http://www.sc.sgcc.com.cn/
+LOW,spf_ip_range,SPF 记录暴露内部 IP 段,4.3,CWE-200,http://www.sc.sgcc.com.cn/
+INFO,subdomain_summary,子域名全景: 4 个子域名，全部 502,,,http://www.sc.sgcc.com.cn/
+INFO,tech_stack,技术栈: Go 反向代理（疑似 Caddy/Traefik）+ 后端服务不可达,,,http://www.sc.sgcc.com.cn/

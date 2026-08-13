@@ -1,0 +1,129 @@
+{
+  "target": "www.sc.sgcc.com.cn",
+  "scan_time": "2026-08-13 10:19:10",
+  "scan_type": "deep_v3",
+  "total_findings": 9,
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 2,
+    "MEDIUM": 3,
+    "LOW": 2,
+    "INFO": 2
+  },
+  "findings": [
+    {
+      "level": "HIGH",
+      "check_name": "https_unavailable",
+      "title": "所有子域名 HTTPS 完全不可用，SSL 证书未配置",
+      "description": "www.sc.sgcc.com.cn 的全部 4 个子域名（www/mail/95598/weixin）均无法建立 HTTPS 连接，SSL 握手超时或失败。作为国家电网四川公司的对外服务门户，95598 供电服务热线和微信端均不支持 HTTPS 加密，用户通过 HTTP 明文传输用电信息、缴费信息等敏感数据，存在中间人攻击风险。响应体 'Forwarding error: connection closed before message completed' 表明使用 Go 语言编写的反向代理（如 Caddy/Traefik），后端服务不可达。",
+      "screenshot_url": "https://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "1. curl -v https://www.sc.sgcc.com.cn/ → SSL 握手超时\n2. curl -v https://95598.sc.sgcc.com.cn/ → SSL 握手超时\n3. curl -v https://mail.sc.sgcc.com.cn/ → SSL 握手超时\n4. curl -v https://weixin.sc.sgcc.com.cn/ → SSL 握手超时\n5. curl http://www.sc.sgcc.com.cn/ → 502 'Forwarding error: connection closed before message completed'",
+      "fix_suggestion": "1. 为所有子域名配置有效的 SSL 证书\n2. 配置 HTTP 自动跳转 HTTPS\n3. 配置 HSTS: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload\n4. 修复后端服务，使其正常响应",
+      "cvss_score": "7.5",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "cwe": "CWE-319 / CWE-295",
+      "affected_url": "https://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "HIGH",
+      "check_name": "all_services_down",
+      "title": "全部 4 个子域名服务宕机 (502 Bad Gateway)",
+      "description": "www/mail/95598/weixin 四个子域名全部返回 502 Bad Gateway，后端服务完全不可用。95598 是国家电网供电服务热线，其在线服务系统宕机会直接影响四川省用户的用电报修、电费查询、业务办理等核心民生服务。响应体 'Forwarding error: connection closed before message completed' 是 Go 语言 reverse proxy 的典型错误信息，表明代理层正常但后端服务已停止响应。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "1. curl http://www.sc.sgcc.com.cn/ → 502\n2. curl http://95598.sc.sgcc.com.cn/ → 502\n3. curl http://mail.sc.sgcc.com.cn/ → 502\n4. curl http://weixin.sc.sgcc.com.cn/ → 502\n所有响应体均为: 'Forwarding error: connection closed before message completed'",
+      "fix_suggestion": "1. 立即检查后端服务状态\n2. 检查反向代理配置\n3. 配置服务健康检查和自动重启\n4. 建立监控告警机制",
+      "cvss_score": "7.5",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "cwe": "CWE-N/A",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "missing_security_headers",
+      "title": "所有子域名缺失全部安全响应头",
+      "description": "全部 4 个子域名均缺失 HSTS、X-Frame-Options、Content-Security-Policy、X-Content-Type-Options 等安全响应头。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "curl -I http://www.sc.sgcc.com.cn/ | grep -iE 'strict-transport|x-frame|content-security|x-content-type'",
+      "fix_suggestion": "配置完整的 OWASP Secure Headers",
+      "cvss_score": "5.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "cwe": "CWE-16",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "infrastructure_info_leak",
+      "title": "502 错误信息泄露基础设施架构（Go 反向代理）",
+      "description": "502 响应体 'Forwarding error: connection closed before message completed' 是 Go 语言 HTTP 反向代理的典型错误信息（非 Nginx/Apache 标准 502 页面），泄露了基础设施使用 Go 语言编写的反向代理（可能是 Caddy、Traefik 或自研网关）。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "curl http://www.sc.sgcc.com.cn/ → 'Forwarding error: connection closed before message completed'",
+      "fix_suggestion": "1. 自定义 502 错误页面，不泄露技术栈信息\n2. 配置 proxy_intercept_errors on",
+      "cvss_score": "5.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": "CWE-200",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "no_ports_open",
+      "title": "所有服务器仅开放 HTTP 80 端口，其余端口全部关闭",
+      "description": "对 4 个 IP（222.212.254.67/68/69/79）进行端口扫描，仅 80 端口开放（返回 502），443/8080/8443/22/3306/6379 等全部关闭。这种异常配置可能是防火墙规则过于严格或服务器初始化未完成。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "nmap -sT -p 22,80,443,8080,8443,3306,6379 222.212.254.67",
+      "fix_suggestion": "1. 检查防火墙规则是否正确\n2. 确保 443 端口开放\n3. 检查服务器部署状态",
+      "cvss_score": "5.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "cwe": "CWE-16",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "LOW",
+      "check_name": "ipv6_exposed",
+      "title": "主站暴露 IPv6 地址",
+      "description": "www.sc.sgcc.com.cn 解析到 IPv6 地址 240e:699:381:2::f100:1 和 IPv4 222.212.254.67。IPv6 地址暴露了网络段信息（240e:699:381:2::/64，中国电信 IPv6 段）。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "dig www.sc.sgcc.com.cn AAAA +short",
+      "fix_suggestion": "如不需要 IPv6，移除 AAAA 记录",
+      "cvss_score": "4.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": "CWE-200",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "LOW",
+      "check_name": "spf_ip_range",
+      "title": "SPF 记录暴露内部 IP 段",
+      "description": "TXT 记录 'v=spf1 ip4:210.77.176.0/24 ip4:210.77.177.0/24 ip4:210.72.236.0/24 -all' 暴露了 3 个内部 IP 段，攻击者可据此进行内网拓扑映射。",
+      "screenshot_url": "http://www.sc.sgcc.com.cn/",
+      "reproduction_steps": "dig sc.sgcc.com.cn TXT +short",
+      "fix_suggestion": "评估是否需要缩小 SPF IP 范围",
+      "cvss_score": "4.3",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": "CWE-200",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "INFO",
+      "check_name": "subdomain_summary",
+      "title": "子域名全景: 4 个子域名，全部 502",
+      "description": "www.sc.sgcc.com.cn (222.212.254.67) - 主站 502\nmail.sc.sgcc.com.cn (222.212.254.68) - 邮件 502\n95598.sc.sgcc.com.cn (222.212.254.69) - 供电服务 502\nweixin.sc.sgcc.com.cn (222.212.254.79) - 微信端 502\nDNS: dl-dns1~6.sgcc.cn + ns.sc.sgcc.com.cn\nMX: mailgw.sgcc.com.cn\n所有 IP 属于 222.212.254.x 段（四川电信）",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    },
+    {
+      "level": "INFO",
+      "check_name": "tech_stack",
+      "title": "技术栈: Go 反向代理（疑似 Caddy/Traefik）+ 后端服务不可达",
+      "description": "根据 502 错误信息 'Forwarding error: connection closed before message completed' 推断使用 Go 语言反向代理。无 Server 响应头泄露。HTTPS 完全不可用。DNS 由国家电网统一 DNS 服务（dl-dns1~6.sgcc.cn）管理。",
+      "affected_url": "http://www.sc.sgcc.com.cn/",
+      "timestamp": "2026-08-13 10:19:10"
+    }
+  ]
+}
