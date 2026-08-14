@@ -1,0 +1,36 @@
+{
+  "target": "www.ucas.ac.cn",
+  "organization": "中国科学院大学（University of Chinese Academy of Sciences）",
+  "scan_time": "2026-08-14 10:10:00",
+  "round2_scan_time": "2026-08-14 10:25:00",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 4,
+    "MEDIUM": 8,
+    "LOW": 2,
+    "INFO": 7
+  },
+  "findings": [
+    {"level": "HIGH", "check_name": "git_directory_exposed", "title": ".git 目录在 Web 服务器上暴露（返回 401 而非 404），存在源代码泄露风险", "cvss_score": "7.5", "cwe": "CWE-200 / CWE-540"},
+    {"level": "HIGH", "check_name": "no_security_headers", "title": "完全缺失 6 个关键安全响应头，存在点击劫持/MIME 嗅探/XSS 等风险", "cvss_score": "7.5", "cwe": "CWE-16 / CWE-1021 / CWE-79"},
+    {"level": "HIGH", "check_name": "no_hsts", "title": "www.ucas.ac.cn 未配置 HSTS，HTTP 严格传输安全缺失", "cvss_score": "7.4", "cwe": "CWE-319"},
+    {"level": "HIGH", "check_name": "user_agent_based_access_control", "title": "基于 User-Agent 的访问控制（无 UA 返回 401，有 UA 返回 200），存在绕过风险和 WAF 识别问题", "cvss_score": "7.3", "cwe": "CWE-290 / CWE-693"},
+    {"level": "MEDIUM", "check_name": "mixed_content_links", "title": "HTTPS 页面包含 20+ 个 HTTP 明文链接（混合内容）", "cvss_score": "5.3", "cwe": "CWE-319"},
+    {"level": "MEDIUM", "check_name": "jquery_old_version", "title": "jQuery 3.4.1 版本过旧（2019 年发布），落后最新版 5 年", "cvss_score": "5.0", "cwe": "CWE-1104"},
+    {"level": "MEDIUM", "check_name": "server_info_disclosure", "title": "404 错误页面泄露服务器信息（openresty）", "cvss_score": "4.3", "cwe": "CWE-200"},
+    {"level": "MEDIUM", "check_name": "no_robots_sitemap", "title": "未配置 robots.txt 和 sitemap.xml", "cvss_score": "2.0", "cwe": "CWE-200"},
+    {"level": "MEDIUM", "check_name": "inline_event_handlers", "title": "页面存在多个内联事件处理器（onclick/onfocus/onblur），存在 XSS 风险", "cvss_score": "4.0", "cwe": "CWE-79"},
+    {"level": "MEDIUM", "check_name": "subdomain_no_security_headers", "title": "多个子域名完全缺失安全响应头（onestop/pay/wx/service/recruit 等）", "cvss_score": "5.3", "cwe": "CWE-16"},
+    {"level": "MEDIUM", "check_name": "server_version_disclosure", "title": "多个子域名泄露服务器版本信息（nginx/1.30.4, IIS/10.0 等）", "cvss_score": "4.3", "cwe": "CWE-200"},
+    {"level": "MEDIUM", "check_name": "admission_internal_paths", "title": "招生网站（admission.ucas.ac.cn）暴露内部系统路径和 API 接口", "cvss_score": "4.0", "cwe": "CWE-200"},
+    {"level": "LOW", "check_name": "token_jsp_blocked", "title": "搜索 token.jsp 返回 401 未授权，CSRF 防护机制可能被阻断", "cvss_score": "3.0", "cwe": "CWE-352"},
+    {"level": "LOW", "check_name": "no_cache_headers", "title": "主站未配置缓存控制头", "cvss_score": "2.0", "cwe": "CWE-525"},
+    {"level": "INFO", "check_name": "subdomain_panorama", "title": "子域名全景（30+ 子域名发现）", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "tech_stack_expanded", "title": "技术栈全景（第二轮深度识别）", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "internal_system_links", "title": "内部系统链接暴露（caigou/ecourse/job/mooc/zhaosheng 等）", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "sso_cas_security", "title": "SSO 单点登录系统安全配置良好", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "payment_wechat_systems", "title": "支付系统和微信平台子域名发现", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "admission_system", "title": "招生系统技术栈和路径信息", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "multi_tech_stack", "title": "多技术栈并存（openresty/IIS/nginx/ASP.NET/PHP/JSP）", "cvss_score": "0.0", "cwe": "N/A"}
+  ]
+}

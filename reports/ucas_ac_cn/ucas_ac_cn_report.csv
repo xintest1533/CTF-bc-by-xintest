@@ -1,0 +1,22 @@
+等级,漏洞名称,CVSS,CWE,类型
+HIGH,.git 目录在 Web 服务器上暴露（返回 401 而非 404），存在源代码泄露风险,7.5,CWE-200 / CWE-540,通用型
+HIGH,完全缺失 6 个关键安全响应头（点击劫持/MIME 嗅探/XSS 等风险）,7.5,CWE-16 / CWE-1021 / CWE-79,通用型
+HIGH,未配置 HSTS（HTTP 严格传输安全缺失）,7.4,CWE-319,通用型
+HIGH,基于 User-Agent 的访问控制（无 UA 返回 401，有 UA 返回 200）存在绕过风险,7.3,CWE-290 / CWE-693,通用型
+MEDIUM,HTTPS 页面包含 20+ 个 HTTP 明文链接（混合内容）,5.3,CWE-319,通用型
+MEDIUM,jQuery 3.4.1 版本过旧（2019 年发布，落后最新版 5 年）,5.0,CWE-1104,通用型
+MEDIUM,404 错误页面泄露服务器信息（openresty）,4.3,CWE-200,通用型
+MEDIUM,未配置 robots.txt 和 sitemap.xml,2.0,CWE-200,通用型
+MEDIUM,页面存在多个内联事件处理器（onclick/onfocus/onblur）XSS 风险,4.0,CWE-79,通用型
+MEDIUM,多个子域名完全缺失安全响应头（onestop/pay/wx/service/recruit）,5.3,CWE-16,通用型
+MEDIUM,多个子域名泄露服务器版本信息（nginx/1.30.4/IIS/10.0）,4.3,CWE-200,通用型
+MEDIUM,招生网站暴露内部系统路径和 API 接口,4.0,CWE-200,通用型
+LOW,搜索 token.jsp 返回 401 被拦截（CSRF 防护可能被阻断）,3.0,CWE-352,通用型
+LOW,主站未配置缓存控制头,2.0,CWE-525,通用型
+INFO,子域名全景（30+ 子域名发现）,0.0,N/A,信息
+INFO,技术栈全景（openresty/IIS/nginx/ASP.NET/PHP/JSP）,0.0,N/A,信息
+INFO,内部系统链接暴露（caigou/ecourse/job/mooc/zhaosheng）,0.0,N/A,信息
+INFO,SSO 单点登录系统安全配置良好,0.0,N/A,信息
+INFO,支付系统和微信平台子域名发现,0.0,N/A,信息
+INFO,招生系统技术栈和路径信息,0.0,N/A,信息
+INFO,多技术栈并存,0.0,N/A,信息
