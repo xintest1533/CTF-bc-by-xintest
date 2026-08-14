@@ -1,12 +1,12 @@
 level,check_name,title,cvss_score,cwe
 HIGH,tls_bad_ecpoint,SSL/TLS 椭圆曲线协商失败（bad ecpoint）现代客户端无法建立 HTTPS 连接,7.5,CWE-295 / CWE-327
-HIGH,jquery_old_version,jQuery 1.9.1 存在多个已知 XSS 漏洞（CVE-2015-9251 / CVE-2020-11022 / CVE-2020-11023）,7.3,CWE-79
+MEDIUM,jquery_outdated_version,jQuery 文件名标注 1.9.1 但实际版本为 3.6.0（版本过旧且文件名误导）,5.0,CWE-1104
 MEDIUM,mixed_content_http,HTTPS 页面包含 HTTP 明文链接到 www.ccyl.org.cn（混合内容）,5.3,CWE-319
 MEDIUM,missing_security_headers,缺失 4 个安全响应头（X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy）,5.3,CWE-16
 MEDIUM,csp_unsafe_inline_eval,CSP 策略包含 unsafe-inline 和 unsafe-eval 削弱 XSS 防护能力,5.0,CWE-80
 MEDIUM,no_cookie_secure,网站会话 Cookie 安全状态未知,4.3,CWE-200
-LOW,server_header_disclosure,Web 服务器指纹泄露（Nginx）,3.1,CWE-200
-LOW,no_robots_txt,未配置 robots.txt 文件,2.0,CWE-200
+LOW,server_header_disclosure,403 错误页面泄露服务器信息（Nginx）,3.1,CWE-200
 INFO,subdomain_panorama,子域名全景,0.0,N/A
 INFO,tech_stack,技术栈识别,0.0,N/A
 INFO,government_domain,政府域名认证信息,0.0,N/A
+INFO,robots_txt,robots.txt 配置,0.0,N/A

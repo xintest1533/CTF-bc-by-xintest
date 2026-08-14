@@ -1,6 +1,6 @@
 # www.bjyouth.gov.cn 漏洞扫描与提交报告
 
-**扫描时间**: 2026-08-14 09:31:00
+**扫描时间**: 2026-08-14 09:31:00（核实时间: 2026-08-14 09:55）
 **目标**: www.bjyouth.gov.cn
 **组织**: 共青团北京市委员会（北京共青团）
 **托管**: 太极计算机股份有限公司（Taiji Computer Corporation）
@@ -14,22 +14,23 @@
 
 | 等级 | 数量 | 漏洞类型 |
 |------|------|----------|
-| HIGH | 2 | TLS 曲线协商失败 / jQuery 1.9.1 XSS |
-| MEDIUM | 4 | 混合内容 / 安全头缺失 / CSP 弱 / Cookie 无安全标志 |
-| LOW | 2 | 服务器指纹泄露 / 无 robots.txt |
-| INFO | 3 | 子域名 / 技术栈 / 政府认证 |
+| HIGH | 1 | TLS 椭圆曲线协商失败（bad ecpoint） |
+| MEDIUM | 5 | jQuery 版本混乱 / 混合内容 / 安全头缺失 / CSP 弱 / Cookie 安全未知 |
+| LOW | 1 | 服务器指纹泄露 |
+| INFO | 4 | 子域名 / 技术栈 / 政府认证 / robots.txt 配置 |
 | **总计** | **11** | |
 
 ---
 
-## 二、HIGH 级漏洞详情（按提交价值排序）
+## 二、HIGH 级漏洞详情（唯一核心漏洞）
 
 ### HIGH-1: SSL/TLS 椭圆曲线协商失败（bad ecpoint）
 
 - **URL/POC**: `https://www.bjyouth.gov.cn/`
 - **CVSS**: 7.5（AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H）
 - **CWE**: CWE-295（证书验证不当）/ CWE-327（不安全加密算法）
-- **类型**: 通用型（服务器 TLS 配置缺陷）
+- **类型**: **通用型**（服务器 TLS 配置缺陷）
+- **稳定复现**: ✅ 连续 5 次请求全部失败，确认为稳定问题
 
 **漏洞描述**:
 www.bjyouth.gov.cn 的 TLS 服务器配置存在椭圆曲线（EC）点格式协商缺陷。默认情况下，OpenSSL 3.0+ 客户端无法建立 HTTPS 连接，报错 `error:0A000132:SSL routines::bad ecpoint`。必须客户端显式指定 `--curves P-256` 才能成功连接。
@@ -42,9 +43,9 @@ TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256 / prime256v1 / rsaEncryption
 
 **复现步骤**:
 ```bash
-# 失败：默认连接
+# 失败：默认连接（5/5 全部失败）
 curl -sI https://www.bjyouth.gov.cn/
-# 结果：exit 35, SSL error: bad ecpoint
+# 结果：exit 35, OpenSSL error: bad ecpoint
 
 # 成功：指定曲线
 curl -skI --curves P-256 https://www.bjyouth.gov.cn/
@@ -56,6 +57,7 @@ curl -skI --curves P-256 https://www.bjyouth.gov.cn/
 2. 用户被迫降级到 HTTP，但 HTTP 已正确 301 跳转 HTTPS，实际造成**服务不可用**
 3. 安全扫描器、监控工具、爬虫等自动化工具无法正常访问站点
 4. 网站对外宣称 HTTPS 加密，但实际大量客户端无法访问，影响可用性
+5. 政府网站服务不可用可能影响共青团工作正常开展
 
 **修复建议**:
 1. 更新 Nginx/OpenSSL 到最新版本
@@ -64,53 +66,41 @@ curl -skI --curves P-256 https://www.bjyouth.gov.cn/
 
 ---
 
-### HIGH-2: jQuery 1.9.1 存在多个已知 XSS 漏洞
+## 三、MEDIUM 级漏洞
 
-- **URL/POC**: `https://www.bjyouth.gov.cn/js/jquery-1.9.1.js`
-- **CVSS**: 7.3（AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N）
-- **CWE**: CWE-79（XSS）
-- **类型**: 通用型（前端库版本过旧）
+### MEDIUM-1: jQuery 文件名标注 1.9.1 但实际版本为 3.6.0（版本过旧且文件名误导）
+
+- **URL**: https://www.bjyouth.gov.cn/js/jquery-1.9.1.js
+- **CVSS**: 5.0 | **CWE**: CWE-1104
+- **类型**: 通用型
 
 **漏洞描述**:
-网站使用 jQuery 1.9.1（288KB），该版本发布于 2013 年，已超过 10 年未更新。存在多个已知 XSS 漏洞：
+网站引用的 jQuery 文件名为 `jquery-1.9.1.js`，但实际内部版本为 jQuery 3.6.0（2021 年发布）。文件名与版本号严重不符，存在维护混乱风险。jQuery 3.6.0 已修复了 CVE-2020-11022/11023 等已知 XSS 漏洞，但距离最新版本 3.7.1 已落后 5 年。
 
-| CVE 编号 | 影响版本 | 漏洞类型 | 评分 |
-|----------|---------|----------|------|
-| CVE-2015-9251 | jQuery < 3.0.0 | 通过 `$(location.hash)` XSS | 7.5 |
-| CVE-2020-11022 | jQuery < 3.5.0 | 通过 `jQuery.htmlPrefilter` HTML 注入 XSS | 6.1 |
-| CVE-2020-11023 | jQuery < 3.5.0 | 通过 HTML 传递给 jQuery 操作函数 XSS | 6.1 |
-
-**复现步骤**:
+**复现**:
 ```bash
-curl -skI --curves P-256 https://www.bjyouth.gov.cn/js/jquery-1.9.1.js | head -3
-# 确认版本为 jQuery 1.9.1
+curl -sk --curves P-256 https://www.bjyouth.gov.cn/js/jquery-1.9.1.js | grep -oP 'version = "[0-9.]+'
+# 输出: version = "3.6.0"
 ```
 
-**危害分析**:
-1. 攻击者可通过构造恶意 HTML 内容，在用户浏览器中执行任意 JavaScript
-2. 政务网站内容通常包含用户提交的稿件/评论，XSS 利用面大
-3. 可窃取用户会话、钓鱼、篡改页面内容
-4. 结合 HIGH-1（TLS 问题），部分用户可能被迫使用 HTTP 访问，XSS 攻击面更广
+**危害**:
+1. 文件名标注 1.9.1 但实际是 3.6.0，维护混乱，难以追踪真实版本
+2. 若后续维护者误以为真是 1.9.1 而忽略更新，将累积安全风险
+3. 无版本锁定机制，升级时可能引入兼容性问题
 
-**修复建议**:
-升级 jQuery 到 3.7.1+ 最新稳定版：
-```html
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-```
+**修复**: 重命名文件为 jquery-3.6.0.js 或升级到 3.7.1+ 并重命名，建立前端库版本管理机制
 
 ---
 
-## 三、MEDIUM 级漏洞
-
-### MEDIUM-1: HTTPS 页面包含 HTTP 明文链接到 www.ccyl.org.cn（混合内容）
+### MEDIUM-2: HTTPS 页面包含 HTTP 明文链接到 www.ccyl.org.cn（混合内容）
 
 - **URL**: https://www.bjyouth.gov.cn/ → http://www.ccyl.org.cn
 - **CVSS**: 5.3 | **CWE**: CWE-319
-- **描述**: HTTPS 页面中存在 `http://www.ccyl.org.cn` 的明文 HTTP 链接，浏览器会显示混合内容警告
-- **复现**: `grep -oP 'http://[^"<>]+' /tmp/bjyouth_full.html | grep -v w3.org`
+- **描述**: HTTPS 页面中存在 `http://www.ccyl.org.cn` 的明文 HTTP 链接
+- **复现**: `grep -oP 'http://[^"<>]+'` 页面源码
 - **修复**: 将 http://www.ccyl.org.cn 改为 https://www.ccyl.org.cn
 
-### MEDIUM-2: 缺失 4 个安全响应头
+### MEDIUM-3: 缺失 4 个安全响应头
 
 - **URL**: https://www.bjyouth.gov.cn/
 - **CVSS**: 5.3 | **CWE**: CWE-16
@@ -124,7 +114,7 @@ add_header Referrer-Policy "strict-origin-when-cross-origin";
 add_header Permissions-Policy "geolocation=(),microphone=(),camera=()";
 ```
 
-### MEDIUM-3: CSP 包含 unsafe-inline 和 unsafe-eval
+### MEDIUM-4: CSP 包含 unsafe-inline 和 unsafe-eval
 
 - **URL**: https://www.bjyouth.gov.cn/
 - **CVSS**: 5.0 | **CWE**: CWE-80
@@ -132,7 +122,7 @@ add_header Permissions-Policy "geolocation=(),microphone=(),camera=()";
 - **复现**: `curl -skI --curves P-256 https://www.bjyouth.gov.cn/ | grep -i content-security`
 - **修复**: 移除 unsafe-inline 和 unsafe-eval，改用 nonce 或 hash 策略
 
-### MEDIUM-4: 网站会话 Cookie 安全状态未知
+### MEDIUM-5: 网站会话 Cookie 安全状态未知
 
 - **URL**: https://www.bjyouth.gov.cn/
 - **CVSS**: 4.3 | **CWE**: CWE-200
@@ -144,36 +134,37 @@ add_header Permissions-Policy "geolocation=(),microphone=(),camera=()";
 
 ## 四、LOW / INFO
 
-### LOW-1: Web 服务器指纹泄露
+### LOW-1: 403 错误页面泄露服务器信息
 - **URL**: https://www.bjyouth.gov.cn/swagger
 - **CVSS**: 3.1 | **CWE**: CWE-200
 - **描述**: 403 错误页面可识别为 Nginx 服务器
 - **修复**: 自定义 403/404 错误页面
 
-### LOW-2: 未配置 robots.txt
-- **URL**: https://www.bjyouth.gov.cn/robots.txt
-- **CVSS**: 2.0 | **CWE**: CWE-200
-- **描述**: robots.txt 返回 404，未配置爬虫规则
-- **修复**: 添加 robots.txt 文件
-
 ### INFO-1: 子域名全景
 | 子域名 | IP | 状态 |
 |--------|----|------|
-| www.bjyouth.gov.cn | 103.83.46.179 | 200 OK |
+| www.bjyouth.gov.cn (IPv4) | 103.83.46.179 | 200 OK |
 | www.bjyouth.gov.cn (IPv6) | 2403:e7c0:1::a9 | - |
+| mail.bjyouth.gov.cn | 未解析 | - |
 
 ### INFO-2: 技术栈
-- 前端: jQuery 1.9.1 + Layui + anime.js 3.2.2 + SuperSlide
+- 前端: jQuery 3.6.0（文件名标注 1.9.1）+ Layui + anime.js 3.2.2 + SuperSlide
 - 服务器: Nginx
 - 证书: GeoSSL DV TLS CA
-- 托管: 太极计算机股份有限公司
-- 统计: 百度统计
+- 托管: 太极计算机股份有限公司（Taiji Computer）
+- 统计: 百度统计（hm.baidu.com）
 - ICP: 京ICP备17017271号-3
+- 公安备案: 京公网安备11010802010388号
 
 ### INFO-3: 政府网站认证
 - 域名: .gov.cn 政府域名
-- 公安备案: 京公网安备11010802010388号
 - 党政机关标识: dcs.conac.cn 已配置
+- 内部邮箱: mail.beijing.gov.cn（北京市政府邮箱系统）
+
+### INFO-4: robots.txt 配置
+- **URL**: https://www.bjyouth.gov.cn/robots.txt
+- 允许所有爬虫访问
+- 提供了 Sitemap: https://www.bjyouth.gov.cn/sitemapindex.xml
 
 ---
 
@@ -181,13 +172,14 @@ add_header Permissions-Policy "geolocation=(),microphone=(),camera=()";
 
 | 优先级 | 漏洞 | 等级 | 类型 | 提交价值 |
 |--------|------|------|------|----------|
-| 1 | **HIGH-1** TLS 椭圆曲线协商失败 | HIGH | 通用型 | ★★★★★ 服务不可用，影响大量客户端 |
-| 2 | **HIGH-2** jQuery 1.9.1 XSS | HIGH | 通用型 | ★★★★☆ 多个已知 CVE，可利用面大 |
-| 3 | **MEDIUM-1** 混合内容 HTTP 链接 | MEDIUM | 通用型 | ★★★☆☆ 影响安全标识 |
-| 4 | **MEDIUM-2** 安全头缺失 | MEDIUM | 通用型 | ★★★☆☆ 点击劫持/MIME 嗅探风险 |
-| 5 | **MEDIUM-3** CSP unsafe-inline/eval | MEDIUM | 通用型 | ★★☆☆☆ 削弱 XSS 防护 |
+| 1 | **HIGH-1** TLS 椭圆曲线协商失败 | HIGH | 通用型 | ★★★★★ 政府网站 HTTPS 服务不可用，影响大量客户端 |
+| 2 | **MEDIUM-1** jQuery 版本混乱 | MEDIUM | 通用型 | ★★★☆☆ 维护混乱，长期风险 |
+| 3 | **MEDIUM-2** 混合内容 HTTP 链接 | MEDIUM | 通用型 | ★★★☆☆ 影响安全标识 |
+| 4 | **MEDIUM-3** 安全头缺失 | MEDIUM | 通用型 | ★★★☆☆ 点击劫持/MIME 嗅探风险 |
+| 5 | **MEDIUM-4** CSP unsafe-inline/eval | MEDIUM | 通用型 | ★★☆☆☆ 削弱 XSS 防护 |
 
 **提交建议**:
-- HIGH-1（TLS bad ecpoint）为核心漏洞，这是政府网站中不常见的严重 TLS 配置缺陷，直接导致大量客户端无法访问
-- HIGH-2（jQuery 1.9.1）为经典前端库版本漏洞，多个 CVE 可叠加
-- 两个 HIGH 均为通用型，建议合并提交，突出 TLS 服务不可用问题
+- 核心漏洞为 **HIGH-1（TLS bad ecpoint）**，这是政府网站中罕见的严重 TLS 配置缺陷，直接导致大量客户端无法通过 HTTPS 访问
+- 该漏洞为通用型，影响整个域名
+- 建议提交时突出说明：**北京共青团官方网站 HTTPS 服务不可用**，连续 5 次测试全部失败，严重影响政府网站公信力和可用性
+- 截图 URL: `curl -v https://www.bjyouth.gov.cn/ 2>&1 | grep -i "bad ecpoint\|exit code"`

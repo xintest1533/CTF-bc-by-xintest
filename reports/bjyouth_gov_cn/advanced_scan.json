@@ -4,8 +4,8 @@
   "scan_time": "2026-08-14 09:31:00",
   "summary": {
     "CRITICAL": 0,
-    "HIGH": 2,
-    "MEDIUM": 4,
+    "HIGH": 1,
+    "MEDIUM": 5,
     "LOW": 2,
     "INFO": 3
   },
@@ -23,16 +23,16 @@
       "fix": "修复服务器 TLS 配置，确保椭圆曲线点格式正确协商：\n1. 更新 Nginx/OpenSSL 到最新版本\n2. 配置 ssl_ecdh_curve 指定支持的曲线\n3. 确保服务器端支持 X9.62 未压缩点格式"
     },
     {
-      "level": "HIGH",
-      "check_name": "jquery_old_version",
-      "title": "jQuery 1.9.1 存在多个已知 XSS 漏洞（CVE-2015-9251 / CVE-2020-11022 / CVE-2020-11023）",
-      "cvss_score": "7.3",
-      "cwe": "CWE-79",
-      "description": "网站使用 jQuery 1.9.1（288KB），该版本存在多个已知 XSS 漏洞：\n- CVE-2015-9251: jQuery < 3.0.0 通过 $(location.hash) 存在 XSS\n- CVE-2020-11022: jQuery < 3.5.0 通过 jQuery.htmlPrefilter 存在 HTML 注入 XSS\n- CVE-2020-11023: jQuery < 3.5.0 通过 HTML 传递给 jQuery 操作函数存在 XSS",
-      "reproduction": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/js/jquery-1.9.1.js | head -3\njQuery 1.9.1 发布于 2013 年，已超过 10 年未更新",
+      "level": "MEDIUM",
+      "check_name": "jquery_outdated_version",
+      "title": "jQuery 文件名标注 1.9.1 但实际版本为 3.6.0（版本过旧且文件名误导）",
+      "cvss_score": "5.0",
+      "cwe": "CWE-1104",
+      "description": "网站引用的 jQuery 文件名为 jquery-1.9.1.js，但实际内部版本为 jQuery 3.6.0（2021 年发布）。文件名与版本号严重不符，存在维护混乱风险。jQuery 3.6.0 已修复已知 XSS 漏洞（CVE-2020-11022/11023），但距离最新版本 3.7.1 已落后 3 年，仍存在潜在安全风险。",
+      "reproduction": "curl -sk --curves P-256 https://www.bjyouth.gov.cn/js/jquery-1.9.1.js | grep -oP 'version = \"[0-9.]+' | head -1\n# 输出: version = \"3.6.0\"",
       "screenshot_url": "https://www.bjyouth.gov.cn/js/jquery-1.9.1.js",
-      "impact": "1. 攻击者可通过构造恶意 HTML 内容，在用户浏览器中执行任意 JavaScript\n2. 政务网站内容通常包含用户提交的稿件/评论，XSS 利用面大\n3. 可窃取用户会话、钓鱼、篡改页面内容",
-      "fix": "升级 jQuery 到 3.7.1+ 最新稳定版"
+      "impact": "1. 文件名标注 1.9.1 但实际是 3.6.0，维护混乱，难以追踪真实版本\n2. jQuery 3.6.0 距今已 5 年，未跟进安全更新\n3. 若后续维护者误以为真是 1.9.1 而忽略更新，将累积安全风险",
+      "fix": "1. 重命名文件为 jquery-3.6.0.js 或升级到 3.7.1+ 并重命名\n2. 建立前端库版本管理机制，确保文件名与版本号一致"
     },
     {
       "level": "MEDIUM",
