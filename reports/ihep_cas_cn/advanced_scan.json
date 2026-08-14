@@ -1,7 +1,30 @@
 {
   "target": "www.ihep.cas.cn",
   "organization": "中国科学院高能物理研究所（Institute of High Energy Physics, CAS）",
-  "scan_time": "2026-08-14 13:30:00",
+  "scan_time": "2026-08-14 13:30:00 (深度复核: 2026-08-14 14:00:00)",
+  "deep_recheck_summary": {
+    "result": "未找到可确认的通用型高危漏洞",
+    "recheck_details": [
+      "edu index.html?id= SQL注入 → 确认为误报（id=1/99999/abc的MD5完全相同，参数不参与SQL查询）",
+      "cpc /web/sys/login 后台登录SQL注入 → WAF拦截OR/UNION关键字；内联注释/*!50000OR*/绕过WAF但响应MD5与正常一致（参数化查询）",
+      "cpc member/login + member/sendResetPassEmail SQL注入 → 同上，WAF拦截+参数化查询",
+      "Coremail XT5.0 已知CVE路径 → 全部404（版本已打补丁或路径变更）",
+      "Apache 2.4.43 CVE-2021-41773/42013 → 前置代理拦截所有payload（502/400/000）",
+      "rdtm/cpc Spring Boot Actuator → 200为catch-all页面（非真实Actuator端点）",
+      "rdtm搜索功能SQL注入 → 所有keyword返回相同111332B（客户端模板渲染，无服务端查询）"
+    ],
+    "new_discoveries": [
+      "cpc.ihep.ac.cn/member/login 会员登录API暴露（200 5039B）",
+      "cpc.ihep.ac.cn/member/sendResetPassEmail 密码重置邮件API暴露（200 'false'）",
+      "cpc.ihep.ac.cn/member/register 注册API暴露（200 '操作异常'）",
+      "cpc.ihep.ac.cn/member/logout 注销API可直接调用（200 'logout success'）",
+      "cpc.ihep.ac.cn/web/sys JSP后台管理系统登录页暴露（200 3588B）",
+      "cpc.ihep.ac.cn/util/AuthExpImageServlet + QrcodeServlet 工具接口暴露",
+      "rdtm.ihep.ac.cn/admin AngularJS后台登录页暴露（200 2927B）",
+      "Coremail changepwd.jsp 密码重置页面暴露（200 4112B，含session token）",
+      "cpc base.js 泄露后端API地址: http://localhost:8080/scxb"
+    ]
+  },
   "summary": {
     "CRITICAL": 0,
     "HIGH": 0,
