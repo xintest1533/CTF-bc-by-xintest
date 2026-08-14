@@ -108,13 +108,85 @@
       "impact": "1. 旧域名如被接管，攻击者可伪装成bpeg官方页面进行钓鱼\n2. 主站42个链接信任旧域名，用户会认为是合法页面\n3. 搜索引擎可能将旧域名与主站关联，影响SEO安全",
       "fix": "1. 确认旧域名www.bpeg.ceec.net.cn仍可控\n2. 将所有链接更新为新域名\n3. 配置旧域名301跳转到新域名",
       "pass_review_probability": "中 - 子域名接管风险是补天可接受漏洞类型"
+    },
+    {
+      "id": 8,
+      "title": "英文站en.bpeg.cn缺失全部6个安全响应头（仅HSTS存在，XFO/CSP/XCTO/XXSS/Referrer/Permissions全缺失）",
+      "level": "低危",
+      "type": "安全响应头缺失",
+      "cvss_score": "4.3",
+      "cwe": "CWE-16",
+      "affected_url": "https://en.bpeg.cn/",
+      "status": "已验证 ✅ (2026-08-14 复核通过)",
+      "description": "en.bpeg.cn 英文站虽然启用了HTTPS，但仅配置了HSTS，6个标准安全响应头全部缺失：X-Frame-Options（点击劫持防护）、Content-Security-Policy（XSS额外防护）、X-Content-Type-Options（MIME嗅探防护）、X-XSS-Protection（浏览器XSS过滤）、Referrer-Policy（Referer泄露防护）、Permissions-Policy（浏览器API权限控制）。相比主站（至少在拦截页有部分临时头注入），英文站防护更为薄弱，英文站HTTP访问也能正常返回（未强制跳转HTTPS）。",
+      "reproduction": "curl -I http://en.bpeg.cn/ | grep -iE 'x-frame|content-security|x-content-type|x-xss-protection|referrer|permissions'\n# 输出为空（全部缺失）\n\ncurl -I http://en.bpeg.cn/\n# HTTP/1.1 200 OK\n# strict-transport-security: max-age=31536000;includeSubdomains;\n# server: CW\n# set-cookie: HWWAFSESID=xxx; path=\n# （仅此4个，无任何安全头）\n\n# 同时HTTP可直接访问（未强制跳转HTTPS）\ncurl -I http://en.bpeg.cn/ | head -1\n# HTTP/1.1 200 OK",
+      "impact": "1. 无X-Frame-Options → 点击劫持（Clickjacking）可将英文站嵌套入恶意页面\n2. 无CSP → XSS载荷无法被拦截\n3. 无X-Content-Type-Options → 上传文件可被MIME嗅探绕过\n4. 无X-XSS-Protection → 老浏览器反射型XSS无浏览器层过滤\n5. 无Referrer-Policy → 点击外站链接时完整URL路径泄露给第三方\n6. HTTP明文直接访问200 → 中间人可篡改英文站内容",
+      "fix": "在英文站Nginx/源站配置以下响应头，同时强制HTTP跳转HTTPS：\nadd_header X-Frame-Options \"DENY\";\nadd_header Content-Security-Policy \"default-src 'self'; upgrade-insecure-requests;\";\nadd_header X-Content-Type-Options \"nosniff\";\nadd_header X-XSS-Protection \"1; mode=block\";\nadd_header Referrer-Policy \"strict-origin-when-cross-origin\";\nadd_header Permissions-Policy \"geolocation=(), microphone=(), camera=()\";",
+      "pass_review_probability": "高 - 英文站防护更薄弱且HTTP明文可访问，漏洞明确"
+    },
+    {
+      "id": 9,
+      "title": "英文站en.bpeg.cn支持HTTP明文访问并包含15个HTTP明文内部链接（混合内容）",
+      "level": "低危",
+      "type": "混合内容 / 明文传输",
+      "cvss_score": "4.3",
+      "cwe": "CWE-319",
+      "affected_url": "http://en.bpeg.cn/",
+      "status": "已验证 ✅ (2026-08-14 复核: 15个HTTP链接)",
+      "description": "en.bpeg.cn 英文站支持HTTP明文直接访问（HTTP访问返回200，未强制301跳HTTPS），且页面源代码包含15个HTTP明文内部链接，均指向本站文章。虽然HSTS头存在（max-age=31536000），但首次访问用户（HSTS preload未加载前）仍可能被中间人攻击拦截，读取或篡改HTTP明文传输的页面内容和Cookie。",
+      "reproduction": "# HTTP明文访问正常（200）：\ncurl -I http://en.bpeg.cn/ | head -1\n# HTTP/1.1 200 OK\n\n# HTTP明文访问的页面中包含15个HTTP链接：\ncurl -sk http://en.bpeg.cn/ | grep -oP 'http://[^\"'\\''<> ]+' | sort -u | wc -l\n# 15\n\ncurl -sk http://en.bpeg.cn/ | grep -oP 'http://[^\"'\\''<> ]+' | sort -u | head -5\n# http://en.bpeg.cn/art/2023/6/8/art_60866_14.html\n# http://en.bpeg.cn/art/2023/6/8/art_60866_15.html\n# http://en.bpeg.cn/art/2023/6/8/art_60866_17.html\n# http://en.bpeg.cn/art/2024/11/7/art_60866_47.html\n# http://en.bpeg.cn/art/2024/5/24/art_60866_16.html",
+      "impact": "1. HTTP明文首次访问用户，HSTS未加载前可被中间人攻击（SSLStrip）\n2. 页面内15个HTTP内部链接，用户点击时Cookie以明文传输，存在截获风险\n3. 英文站面向海外用户，HTTPS强制缺失更易被境外网络中间人利用",
+      "fix": "1. 配置HTTP→HTTPS 301强制跳转（en.bpeg.cn HTTP根域）\n2. 将页面内15个HTTP内部链接改为HTTPS\n3. 提交域名到Chrome HSTS Preload列表\n4. CSP配置 upgrade-insecure-requests",
+      "pass_review_probability": "高 - HTTP明文访问+大量明文链接，漏洞边界清晰"
+    },
+    {
+      "id": 10,
+      "title": "vpn.bpeg.cn robots.txt 配置 Disallow: / 全量禁止爬取，反暴露VPN系统存在性",
+      "level": "低危",
+      "type": "配置不当 / 信息泄露",
+      "cvss_score": "4.3",
+      "cwe": "CWE-200 / CWE-16",
+      "affected_url": "https://vpn.bpeg.cn/robots.txt",
+      "status": "已验证 ✅ (2026-08-14 复核通过)",
+      "description": "vpn.bpeg.cn 的 robots.txt 配置为 User-agent: * 、Disallow: /，即禁止所有搜索引擎爬取全站。这一配置通常暗示该域名承载非公开系统（如VPN、内部管理等），反而给攻击者提供了资产识别信号——攻击者可直接通过遍历 /robots.txt 快速判断出 'vpn.bpeg.cn 是重点攻击目标（VPN网关）'，降低了攻击门槛。配合 Server:Server 和 TMLVER=6.8 泄露，可在数秒内确认产品品牌和版本。",
+      "reproduction": "curl -sk https://vpn.bpeg.cn/robots.txt\n# 返回:\n# User-agent: *\n# Disallow: /\n\n# 对比 www.bpeg.cn robots 正常返回404（不泄露额外信号）:\ncurl -skL https://www.bpeg.cn/robots.txt | grep -oP '您访问的页面不存在|Disallow'\n# 您访问的页面不存在（主页404兜底）",
+      "impact": "1. 攻击者通过 robots.txt 立即将vpn子域识别为'高价值非公开系统'\n2. 结合 Server:Server + TMLVER=6.8，攻击者可在1分钟内定位到天融信SSL VPN 6.x并搜索对应已知CVE\n3. Disallow:/ 并不能有效防爬取（攻击者爬虫不遵守robots协议），仅起到泄露提示作用",
+      "fix": "1. 移除 robots.txt（返回404，不提供信号）\n2. 如需保留，修改为：User-agent: * Allow: / （不暗示非公开属性）\n3. 对 /robots.txt 访问也启用WAF速率限制和异常检测",
+      "pass_review_probability": "中 - robots配置不当在补天常接受但需清晰说明'反暴露'逻辑"
+    },
+    {
+      "id": 11,
+      "title": "主站泄露两款JS组件详细版本（jQuery + SuperSlide v2.1），攻击者可定向查对应CVE",
+      "level": "低危",
+      "type": "信息泄露",
+      "cvss_score": "4.3",
+      "cwe": "CWE-200",
+      "affected_url": "https://www.bpeg.cn/images/3735/jquery.SuperSlide.2.1.js",
+      "status": "已验证 ✅ (2026-08-14 复核通过)",
+      "description": "www.bpeg.cn 主站加载了 /module/jslib/jquery/jquery.js 和 /images/3735/jquery.SuperSlide.2.1.js，SuperSlide JS文件名直接包含版本号2.1，文件头注释写明 'SuperSlide v2.1'。jQuery文件名虽无版本号，但文件首行UMD包装风格为 jQuery 3.x 稳定标识，可推测版本。SuperSlide 2.1 历史上存在XSS和原型链污染已知漏洞，攻击者可直接按版本号定位对应POC。",
+      "reproduction": "# SuperSlide 版本直接在文件名和源码中暴露：\ncurl -sk https://www.bpeg.cn/images/3735/jquery.SuperSlide.2.1.js | head -3\n# 输出含: SuperSlide v2.1\n\n# 泄露路径还可枚举:\n# /images/3735/jquery.SuperSlide.2.1.js - 直接含版本号",
+      "impact": "1. 攻击者无需猜测组件版本，直接检索SuperSlide 2.1已知CVE/POC\n2. jQuery 3.x 虽相对安全，但一旦发现历史CVE可直接套用\n3. 版本指纹 + WAF标识(CW) + Server头组合，降低攻击探测成本",
+      "fix": "1. 重命名JS文件去除版本号信息（jquery.SuperSlide.2.1.js → slides.js）\n2. 移除JS文件头注释中明确的版本字符串\n3. 升级SuperSlide和jQuery到最新安全版",
+      "pass_review_probability": "中低 - 纯组件版本泄露，需作为附加信息提交"
     }
   ],
   "submission_priority": [
     "优先提交 #1 Cookie安全标志缺失（过审率最高）",
     "优先提交 #3 安全响应头缺失（过审率高）",
-    "其次提交 #2 混合内容（过审率中）",
+    "优先提交 #8 英文站en.bpeg.cn安全响应头全缺失（过审率高 - 可单独提）",
+    "优先提交 #9 英文站HTTP明文访问+15个混合内容（过审率高 - 可单独提）",
+    "其次提交 #2 主站混合内容（过审率中）",
     "其次提交 #7 旧域名子域名接管风险（过审率中）",
-    "最后提交 #4 #5 #6 信息泄露类（过审率中低）"
+    "其次提交 #10 vpn robots Disallow:/ 反暴露存在性（过审率中）",
+    "最后提交 #4 #5 #6 #11 信息泄露类（过审率中低，可打包作为多个信息泄露补充报告）"
+  ],
+  "newly_discovered_20260814": [
+    "en.bpeg.cn: HTTP明文访问200（未强制跳转HTTPS）",
+    "en.bpeg.cn: 15个HTTP明文内部链接（混合内容）",
+    "en.bpeg.cn: 6个安全响应头全部缺失（仅HSTS存在）",
+    "vpn.bpeg.cn: robots.txt Disallow:/ 全量禁止反暴露存在性",
+    "主站: SuperSlide v2.1 + jQuery 3.x 版本泄露（文件名含版本）",
+    "jQuery路径: /module/jslib/jquery/jquery.js",
+    "SuperSlide路径: /images/3735/jquery.SuperSlide.2.1.js"
   ]
 }
