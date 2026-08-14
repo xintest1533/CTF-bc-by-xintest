@@ -1,0 +1,25 @@
+{
+  "target": "www.bjyouth.gov.cn",
+  "organization": "共青团北京市委员会（北京共青团）",
+  "scan_time": "2026-08-14 09:31:00",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 2,
+    "MEDIUM": 4,
+    "LOW": 2,
+    "INFO": 3
+  },
+  "findings": [
+    {"level": "HIGH", "check_name": "tls_bad_ecpoint", "title": "SSL/TLS 椭圆曲线协商失败（bad ecpoint），现代客户端无法建立 HTTPS 连接", "cvss_score": "7.5", "cwe": "CWE-295 / CWE-327"},
+    {"level": "HIGH", "check_name": "jquery_old_version", "title": "jQuery 1.9.1 存在多个已知 XSS 漏洞（CVE-2015-9251 / CVE-2020-11022 / CVE-2020-11023）", "cvss_score": "7.3", "cwe": "CWE-79"},
+    {"level": "MEDIUM", "check_name": "mixed_content_http", "title": "HTTPS 页面包含 HTTP 明文链接到 www.ccyl.org.cn（混合内容）", "cvss_score": "5.3", "cwe": "CWE-319"},
+    {"level": "MEDIUM", "check_name": "missing_security_headers", "title": "缺失 4 个安全响应头（X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy）", "cvss_score": "5.3", "cwe": "CWE-16"},
+    {"level": "MEDIUM", "check_name": "csp_unsafe_inline_eval", "title": "CSP 策略包含 unsafe-inline 和 unsafe-eval，削弱 XSS 防护能力", "cvss_score": "5.0", "cwe": "CWE-80"},
+    {"level": "MEDIUM", "check_name": "no_cookie_secure", "title": "网站会话 Cookie 安全状态未知", "cvss_score": "4.3", "cwe": "CWE-200"},
+    {"level": "LOW", "check_name": "server_header_disclosure", "title": "Web 服务器指纹泄露（Nginx）", "cvss_score": "3.1", "cwe": "CWE-200"},
+    {"level": "LOW", "check_name": "no_robots_txt", "title": "未配置 robots.txt 文件", "cvss_score": "2.0", "cwe": "CWE-200"},
+    {"level": "INFO", "check_name": "subdomain_panorama", "title": "子域名全景", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "tech_stack", "title": "技术栈识别", "cvss_score": "0.0", "cwe": "N/A"},
+    {"level": "INFO", "check_name": "government_domain", "title": "政府域名认证信息", "cvss_score": "0.0", "cwe": "N/A"}
+  ]
+}

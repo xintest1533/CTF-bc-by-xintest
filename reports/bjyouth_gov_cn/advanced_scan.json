@@ -1,0 +1,146 @@
+{
+  "target": "www.bjyouth.gov.cn",
+  "organization": "共青团北京市委员会（北京共青团）",
+  "scan_time": "2026-08-14 09:31:00",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 2,
+    "MEDIUM": 4,
+    "LOW": 2,
+    "INFO": 3
+  },
+  "findings": [
+    {
+      "level": "HIGH",
+      "check_name": "tls_bad_ecpoint",
+      "title": "SSL/TLS 椭圆曲线协商失败（bad ecpoint），现代客户端无法建立 HTTPS 连接",
+      "cvss_score": "7.5",
+      "cwe": "CWE-295 / CWE-327",
+      "description": "服务器 TLS 配置存在椭圆曲线（EC）点格式协商缺陷。默认 TLS 握手失败（OpenSSL error: bad ecpoint），必须客户端显式指定 --curves P-256 才能连接。成功连接后使用 TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256 / prime256v1。证书由 GeoSSL DV TLS CA 签发。",
+      "reproduction": "curl -sI https://www.bjyouth.gov.cn/  # 失败：exit 35, bad ecpoint\ncurl -skI --curves P-256 https://www.bjyouth.gov.cn/  # 成功：200 OK",
+      "screenshot_url": "curl -v https://www.bjyouth.gov.cn/ 2>&1 | grep -i bad",
+      "impact": "1. 大量现代客户端（curl/OpenSSL 3.0+、部分浏览器/移动端）无法建立 HTTPS 连接\n2. 用户被迫降级到 HTTP（但 HTTP 已正确301跳转HTTPS），造成服务不可用\n3. 网站对外宣称 HTTPS 但实际大量客户端无法访问，严重损害可用性\n4. 安全扫描器、监控工具、爬虫等自动化工具无法正常访问",
+      "fix": "修复服务器 TLS 配置，确保椭圆曲线点格式正确协商：\n1. 更新 Nginx/OpenSSL 到最新版本\n2. 配置 ssl_ecdh_curve 指定支持的曲线\n3. 确保服务器端支持 X9.62 未压缩点格式"
+    },
+    {
+      "level": "HIGH",
+      "check_name": "jquery_old_version",
+      "title": "jQuery 1.9.1 存在多个已知 XSS 漏洞（CVE-2015-9251 / CVE-2020-11022 / CVE-2020-11023）",
+      "cvss_score": "7.3",
+      "cwe": "CWE-79",
+      "description": "网站使用 jQuery 1.9.1（288KB），该版本存在多个已知 XSS 漏洞：\n- CVE-2015-9251: jQuery < 3.0.0 通过 $(location.hash) 存在 XSS\n- CVE-2020-11022: jQuery < 3.5.0 通过 jQuery.htmlPrefilter 存在 HTML 注入 XSS\n- CVE-2020-11023: jQuery < 3.5.0 通过 HTML 传递给 jQuery 操作函数存在 XSS",
+      "reproduction": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/js/jquery-1.9.1.js | head -3\njQuery 1.9.1 发布于 2013 年，已超过 10 年未更新",
+      "screenshot_url": "https://www.bjyouth.gov.cn/js/jquery-1.9.1.js",
+      "impact": "1. 攻击者可通过构造恶意 HTML 内容，在用户浏览器中执行任意 JavaScript\n2. 政务网站内容通常包含用户提交的稿件/评论，XSS 利用面大\n3. 可窃取用户会话、钓鱼、篡改页面内容",
+      "fix": "升级 jQuery 到 3.7.1+ 最新稳定版"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "mixed_content_http",
+      "title": "HTTPS 页面包含 HTTP 明文链接到 www.ccyl.org.cn（混合内容）",
+      "cvss_score": "5.3",
+      "cwe": "CWE-319",
+      "description": "HTTPS 页面中包含 http://www.ccyl.org.cn 的明文 HTTP 链接。ccyl.org.cn 是中国共青团中央官方网站，当 HTTPS 页面加载 HTTP 资源时，浏览器会发出混合内容警告。",
+      "reproduction": "grep -oP 'http://[^\"\\'<>]+' /tmp/bjyouth_full.html\n# 输出: http://www.ccyl.org.cn",
+      "screenshot_url": "查看页面源码中 http://www.ccyl.org.cn 链接",
+      "impact": "1. 浏览器地址栏安全标识降级为\"不安全\"或显示混合内容警告\n2. ccvl.org.cn 链路可被 MITM 攻击篡改\n3. 影响政府网站专业形象和用户信任度",
+      "fix": "将 http://www.ccyl.org.cn 改为 https://www.ccyl.org.cn"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "missing_security_headers",
+      "title": "缺失 4 个安全响应头（X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy）",
+      "cvss_score": "5.3",
+      "cwe": "CWE-16",
+      "description": "网站配置了 HSTS 和 CSP，但缺失以下 4 个关键安全响应头：\n- X-Frame-Options: 缺失 → 点击劫持风险\n- X-Content-Type-Options: 缺失 → MIME 类型嗅探风险\n- Referrer-Policy: 缺失 → 来源信息泄露\n- Permissions-Policy: 缺失 → 浏览器 API 权限未限制",
+      "reproduction": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/ | grep -iE 'x-frame|content-security|x-content-type|referrer|permissions|strict-transport'",
+      "screenshot_url": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/ | head -10",
+      "impact": "1. 缺失 X-Frame-Options：页面可被嵌入 iframe 实施点击劫持\n2. 缺失 X-Content-Type-Options：浏览器可能错误解析 MIME 类型\n3. 缺失 Referrer-Policy：跨站请求可能泄露完整 URL（含敏感参数）\n4. 缺失 Permissions-Policy：浏览器 API（摄像头/麦克风/地理位置）无限制",
+      "fix": "添加以下响应头：\nadd_header X-Frame-Options \"SAMEORIGIN\";\nadd_header X-Content-Type-Options \"nosniff\";\nadd_header Referrer-Policy \"strict-origin-when-cross-origin\";\nadd_header Permissions-Policy \"geolocation=(),microphone=(),camera=()\";"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "csp_unsafe_inline_eval",
+      "title": "CSP 策略包含 unsafe-inline 和 unsafe-eval，削弱 XSS 防护能力",
+      "cvss_score": "5.0",
+      "cwe": "CWE-80",
+      "description": "Content-Security-Policy 中使用了 'unsafe-inline' 和 'unsafe-eval'，使得 CSP 对 XSS 的防护效果大幅降低。攻击者若发现 XSS 漏洞，仍可执行内联脚本和 eval()。",
+      "reproduction": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/ | grep -i content-security",
+      "screenshot_url": "查看 CSP 响应头中的 unsafe-inline 和 unsafe-eval",
+      "impact": "CSP 中的 unsafe-inline 和 unsafe-eval 使 CSP 无法有效防御 XSS 攻击，攻击者仍可执行内联脚本",
+      "fix": "移除 'unsafe-inline' 和 'unsafe-eval'，改用 nonce 或 hash 策略加载内联脚本"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "no_cookie_secure",
+      "title": "网站未设置任何会话 Cookie，但存在搜索功能可能涉及会话管理",
+      "cvss_score": "4.3",
+      "cwe": "CWE-200",
+      "description": "首页响应中未设置任何 Cookie，但网站存在搜索框（id: header_search）和内部页面，可能在其他页面使用会话 Cookie 时未设置安全标志。",
+      "reproduction": "curl -skI --curves P-256 https://www.bjyouth.gov.cn/ | grep -i set-cookie\n# 输出为空，无 Cookie",
+      "screenshot_url": "-",
+      "impact": "首页无 Cookie，但需检查其他子页面是否使用了缺少安全标志的会话 Cookie",
+      "fix": "确保所有子页面的 Cookie 都设置了 Secure/HttpOnly/SameSite 标志"
+    },
+    {
+      "level": "LOW",
+      "check_name": "server_header_disclosure",
+      "title": "Web 服务器类型未隐藏（虽未直接暴露 Server 头，但可通过指纹识别）",
+      "cvss_score": "3.1",
+      "cwe": "CWE-200",
+      "description": "虽未直接暴露 Server 响应头，但通过 403/404 错误页面可识别为 Nginx 服务器。",
+      "reproduction": "curl -sk --curves P-256 https://www.bjyouth.gov.cn/swagger | grep -i nginx\n# 403 错误页面特征",
+      "screenshot_url": "-",
+      "impact": "攻击者可识别 Web 服务器类型，定向搜索已知漏洞",
+      "fix": "自定义 403/404 错误页面，移除服务器特征"
+    },
+    {
+      "level": "LOW",
+      "check_name": "no_robots_txt",
+      "title": "未配置 robots.txt 文件",
+      "cvss_score": "2.0",
+      "cwe": "CWE-200",
+      "description": "网站未配置 robots.txt 文件，返回 404 状态码。",
+      "reproduction": "curl -sk -o /dev/null -w '%{http_code}' --curves P-256 https://www.bjyouth.gov.cn/robots.txt\n# 404",
+      "screenshot_url": "-",
+      "impact": "无法通过 robots.txt 了解网站哪些路径不希望被爬取",
+      "fix": "添加 robots.txt 文件"
+    },
+    {
+      "level": "INFO",
+      "check_name": "subdomain_panorama",
+      "title": "子域名全景",
+      "cvss_score": "0.0",
+      "cwe": "N/A",
+      "description": "bjyouth.gov.cn 子域名解析情况：\n- www.bjyouth.gov.cn → 103.83.46.179（太极计算机/北京）\n- IPv6: 2403:e7c0:1::a9",
+      "reproduction": "dig www.bjyouth.gov.cn A +short",
+      "screenshot_url": "-",
+      "impact": "仅发现 www 子域名，其他常见子域名未解析",
+      "fix": "-"
+    },
+    {
+      "level": "INFO",
+      "check_name": "tech_stack",
+      "title": "技术栈识别",
+      "cvss_score": "0.0",
+      "cwe": "N/A",
+      "description": "前端: jQuery 1.9.1 + Layui + anime.js 3.2.2 + SuperSlide\n服务器: Nginx\n证书: GeoSSL DV TLS CA\n托管: 太极计算机股份有限公司（Taiji Computer）\n网络: 中国互联网交换中心（China Networks Inter-Exchange）\n统计: 百度统计（hm.baidu.com）\nICP: 京ICP备17017271号-3",
+      "reproduction": "curl -sk --curves P-256 https://www.bjyouth.gov.cn/ | grep -oP '<script[^>]*src=\"[^\"]*\"' | head",
+      "screenshot_url": "-",
+      "impact": "技术栈信息有助于攻击者定位已知漏洞",
+      "fix": "-"
+    },
+    {
+      "level": "INFO",
+      "check_name": "government_domain",
+      "title": "政府域名认证信息",
+      "cvss_score": "0.0",
+      "cwe": "N/A",
+      "description": "网站为政府域名（.gov.cn），归属共青团北京市委员会。\nICP: 京ICP备17017271号-3\n公安备案: 京公网安备11010802010388号\n党政机关标识: 已配置 dcs.conac.cn 认证",
+      "reproduction": "网站底部信息",
+      "screenshot_url": "-",
+      "impact": "政府网站应遵循更高的安全标准",
+      "fix": "-"
+    }
+  ]
+}
