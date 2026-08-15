@@ -1,9 +1,56 @@
 {
   "target": "www.bpeg.cn",
   "organization": "北京电力设备总厂有限公司",
-  "scan_time": "2026-08-14 14:15:00 (复核验证)",
+  "scan_time": "2026-08-14 14:15:00 (复核验证) + 2026-08-15 补充扫描",
   "purpose": "补天漏洞提交 - 低危漏洞清单（能过审）",
+  "new_findings_count": 3,
   "verified_findings": [
+    {
+      "id": 8,
+      "title": "英文站en.bpeg.cn HTTPS自动301跳转到HTTP明文（协议降级攻击）",
+      "level": "低危",
+      "type": "HTTPS协议降级",
+      "cvss_score": "4.3",
+      "cwe": "CWE-757 / CWE-319",
+      "affected_url": "https://en.bpeg.cn/",
+      "status": "已验证 ✅ (2026-08-15 新发现)",
+      "description": "用户访问 https://en.bpeg.cn/ 时，服务器返回301 Moved Permanently，Location头指向 http://en.bpeg.cn/（HTTP明文），导致HTTPS降级为HTTP。这使英文站全站处于明文传输状态，攻击者可执行SSL Strip中间人攻击，篡改页面内容、窃取用户输入的敏感信息。同时HTTP明文响应仍下发HWWAFSESID Cookie（无Secure标志），加剧风险。",
+      "reproduction": "curl -skI https://en.bpeg.cn/ | grep -E '^HTTP|^Location'\n\n返回:\nHTTP/1.1 301 Moved Permanently\nLocation: http://en.bpeg.cn/\n\n（HTTPS跳转到HTTP明文）",
+      "impact": "1. HTTPS保护失效，攻击者可SSL Strip中间人攻击\n2. HTTP明文传输导致页面内容可被篡改\n3. 英文站Cookie（HWWAFSESID）在HTTP明文发送，无Secure标志",
+      "fix": "将Location的301目标改为 https://en.bpeg.cn/（保持HTTPS，禁止协议降级）",
+      "pass_review_probability": "高 - HTTPS降级是补天明确接受的漏洞类型"
+    },
+    {
+      "id": 9,
+      "title": "英文站en.bpeg.cn全部20个内部链接使用HTTP明文（混合内容+协议降级双重缺陷）",
+      "level": "低危",
+      "type": "混合内容 / 协议降级",
+      "cvss_score": "4.3",
+      "cwe": "CWE-319",
+      "affected_url": "http://en.bpeg.cn/",
+      "status": "已验证 ✅ (2026-08-15 新发现)",
+      "description": "en.bpeg.cn英文站不仅从HTTPS降级HTTP，且页面内20+内部文章链接全部使用 http://en.bpeg.cn/ 明文链接（如 http://en.bpeg.cn/art/2023/6/8/art_60866_14.html），无任何HTTPS链接。全站完全失去传输加密保护。",
+      "reproduction": "curl -sk http://en.bpeg.cn/ | grep -oP 'http://en\\.bpeg\\.cn[^\"'\\''<> ]+' | sort -u | wc -l\n# 20+ （所有内部链接均为HTTP明文）",
+      "impact": "全站HTTP明文传输，面临中间人攻击、Cookie窃取、页面篡改",
+      "fix": "1. 所有内部链接改为 https://en.bpeg.cn/  \n2. 启用 HSTS includeSubdomains  \n3. 配置 CSP upgrade-insecure-requests",
+      "pass_review_probability": "高 - 与#8配合，两个缺陷提交覆盖协议降级问题"
+    },
+    {
+      "id": 10,
+      "title": "英文站en.bpeg.cn完全缺失所有安全响应头（X-Frame/CSP/X-Content-Type等）",
+      "level": "低危",
+      "type": "安全响应头缺失",
+      "cvss_score": "4.3",
+      "cwe": "CWE-16",
+      "affected_url": "http://en.bpeg.cn/",
+      "status": "已验证 ✅ (2026-08-15 新发现)",
+      "description": "en.bpeg.cn英文站响应中缺失X-Frame-Options、Content-Security-Policy、X-Content-Type-Options、Referrer-Policy、Permissions-Policy共5个安全响应头，更严重的是：en.bpeg.cn是HTTP明文传输，HSTS也实际无法生效（HTTP响应中的HSTS头会被浏览器忽略）。英文站面临Clickjacking、MIME嗅探、XSS等多种攻击。",
+      "reproduction": "curl -I http://en.bpeg.cn/ | grep -iE 'x-frame|content-security|x-content|referrer|permissions|strict-transport'\n# 输出为空（全部缺失）",
+      "impact": "1. 无X-Frame-Options → Clickjacking点击劫持攻击\n2. 无CSP → XSS攻击无额外防护\n3. 无X-Content-Type-Options → MIME嗅探攻击\n4. HTTP明文 → HSTS头实际被浏览器忽略",
+      "fix": "升级en.bpeg.cn到HTTPS后添加所有安全响应头",
+      "pass_review_probability": "中 - 安全头缺失补天常见接受类型"
+    },
+
     {
       "id": 1,
       "title": "WAF会话Cookie缺少全部安全标志（Secure/HttpOnly/SameSite）",

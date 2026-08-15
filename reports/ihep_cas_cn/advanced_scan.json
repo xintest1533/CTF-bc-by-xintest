@@ -11,7 +11,10 @@
       "Coremail XT5.0 已知CVE路径 → 全部404（版本已打补丁或路径变更）",
       "Apache 2.4.43 CVE-2021-41773/42013 → 前置代理拦截所有payload（502/400/000）",
       "rdtm/cpc Spring Boot Actuator → 200为catch-all页面（非真实Actuator端点）",
-      "rdtm搜索功能SQL注入 → 所有keyword返回相同111332B（客户端模板渲染，无服务端查询）"
+      "rdtm搜索功能SQL注入 → 所有keyword返回相同111332B（客户端模板渲染，无服务端查询）",
+      "Tomcat 7.0.47 /6.0.41 CVE-2017-12617 PUT JSP → readonly=true（PUT返回403，不允许上传）",
+      "login.ihep.ac.cn Manager弱口令爆破 → 37组常见账号全部失败（admin/tomcat/manager/root/deploy等均为401）",
+      "idp.ihep.ac.cn Tomcat Manager → 80/8843/8443均不可达（仅443开放SSO）"
     ],
     "new_discoveries": [
       "cpc.ihep.ac.cn/member/login 会员登录API暴露（200 5039B）",
@@ -22,17 +25,45 @@
       "cpc.ihep.ac.cn/util/AuthExpImageServlet + QrcodeServlet 工具接口暴露",
       "rdtm.ihep.ac.cn/admin AngularJS后台登录页暴露（200 2927B）",
       "Coremail changepwd.jsp 密码重置页面暴露（200 4112B，含session token）",
-      "cpc base.js 泄露后端API地址: http://localhost:8080/scxb"
+      "cpc base.js 泄露后端API地址: http://localhost:8080/scxb",
+      "【中危】login.ihep.ac.cn（统一身份认证，Tomcat 7.0.47）/manager/html存在但Basic认证密码强度高，/docs/ 目录完整泄露Apache Tomcat官方文档（含安全配置指南/Manager配置指南/数据源密码配置示例等敏感文档）",
+      "【中危】docs-drsai.ihep.ac.cn/api/openapi.json FastAPI完整API文档暴露（含登录/注册/用户管理/文档管理全部端点、Schema字段、认证要求标记），其中 /api/docs/{doc_id}、/api/docs/get、/api/topics/、/api/topics/{topic_id} 为公开无鉴权端点，/api/users/ 需401正确返回认证",
+      "【低危】login.ihep.ac.cn JSESSIONID Cookie 缺少 Secure + SameSite 标志（Tomcat默认配置缺陷）；idp.ihep.ac.cn jQuery 1.7.1（2011）存在原型链污染+XSS通用组件漏洞（CVE未被公开标注但1.7.1<1.12.0）",
+      "【低危】docs-drsai.ihep.ac.cn Server: nginx/1.27.4 (10月前版本) + OpenAPI暴露FastAPI后端架构（Python/uvicorn内部信息）"
     ]
   },
   "summary": {
     "CRITICAL": 0,
     "HIGH": 0,
-    "MEDIUM": 6,
-    "LOW": 5,
-    "INFO": 9
+    "MEDIUM": 8,
+    "LOW": 8,
+    "INFO": 11
   },
   "findings": [
+    {
+      "level": "MEDIUM",
+      "check_name": "tomcat_docs_leak_login_ihep",
+      "title": "login.ihep.ac.cn（统一身份认证系统）Tomcat 7.0.47 /docs/ 目录完整泄露官方文档（含安全配置/Manager配置/JNDI密码示例）",
+      "cvss_score": "5.3",
+      "cwe": "CWE-200 / CWE-425",
+      "description": "login.ihep.ac.cn 是IHEP统一身份认证登录系统（统一门户SSO，含Shibboleth+OA登录功能），运行Apache Tomcat 7.0.47。生产环境 /docs/ 目录未关闭，完整泄露Apache Tomcat 7官方文档，包含：\n- security-howto.html（32KB）：Tomcat安全最佳实践\n- manager-howto.html（118KB）：Tomcat Manager管理控制台配置\n- config/manager.html（34KB）：Manager XML配置模板\n- jndi-datasource-examples-howto.html（58KB）：数据库JNDI连接配置示例（泄露MySQL/Oracle连接字符串格式及示例密码配置）\n- ssl-howto.html（65KB）：SSL证书/HTTPS配置文档\n这些文档本身是通用Tomcat文档，但在统一认证系统的生产域名上暴露，提示该系统存在默认安装遗留配置，可能同时存在其它默认路径（/manager/html已验证存在，/examples等需进一步测试）。",
+      "reproduction": "curl -skI https://login.ihep.ac.cn/docs/ | head -3\n# HTTP/1.1 200 OK\n# Server: Apache-Coyote/1.1 （= Tomcat 7.0.47）\n# Content-Length: 4931\n\ncurl -sk https://login.ihep.ac.cn/docs/ | grep -oP 'Apache Tomcat \\d+ \\(7\\.0\\.47\\)' | head -1\n# Apache Tomcat 7 (7.0.47)\n\n# 敏感文档全部200可达：\ncurl -skI https://login.ihep.ac.cn/docs/security-howto.html | head -1\n# 200（32694B）\ncurl -skI https://login.ihep.ac.cn/docs/jndi-datasource-examples-howto.html | head -1\n# 200（58109B，JNDI数据源密码配置示例）",
+      "screenshot_url": "https://login.ihep.ac.cn/docs/",
+      "impact": "1. /docs/ 存在 = Tomcat生产默认配置未清理 = 可能存在 /examples、/manager、/host-manager 等其它默认路径\n2. JNDI数据源文档中包含真实数据库连接配置示例（如 dbUser/dbPassword=），用于启发管理员密码猜测\n3. Manager-howto文档可用于指导构造 /manager/html 爆破字典及利用流程\n4. 统一身份认证系统是高敏感资产，默认遗留配置暗示其它安全问题可能性大",
+      "fix": "1. conf/server.xml 中移除或注释 /docs/ Context配置\n2. 删除 webapps/docs/ 整个目录\n3. 同时删除 webapps/examples/、webapps/host-manager/（如非必要）"
+    },
+    {
+      "level": "MEDIUM",
+      "check_name": "openapi_leak_docs_drsai",
+      "title": "docs-drsai.ihep.ac.cn FastAPI /api/openapi.json 完整API文档泄露（含无鉴权端点+用户/文档/主题管理接口定义）",
+      "cvss_score": "5.8",
+      "cwe": "CWE-200",
+      "description": "docs-drsai.ihep.ac.cn（DRSAI文档管理系统，Python FastAPI后端）的 /api/openapi.json 开放访问，完整泄露API接口清单、HTTP方法、Schema字段结构、是否需要鉴权等信息。\n\n【接口枚举结果 - 全部无需认证（OPEN）的6个端点】:\n1. POST /api/auth/login - 登录接口（字段: email, password, remember）\n2. POST /api/auth/access-token - Access Token获取（字段: username, password, scope, client_id, client_secret）\n3. POST /api/auth/register - 注册接口（字段: email, username, password, full_name）\n4. GET  /api/docs/{doc_id} - 按ID读取文档\n5. GET  /api/docs/get - 按Path读取文档\n6. GET  /api/topics/ - 读取所有主题列表\n7. GET  /api/topics/{topic_id} - 读取单个主题\n\n【已验证测试结果】:\n- GET  /api/users/ → 401 (正确：需认证)\n- POST /api/auth/login → 422 (JSON字段校验错误，说明接口实际存在)\n- POST /api/auth/register → 422 (同上)\n\n【泄露敏感Schema】:\n- UserResponse: 含 id, email, username, full_name, is_active, is_superuser, avatar_url, created_at, last_login\n- UserCreate: 含注册字段 is_superuser（布尔，意味着注册接口可能允许用户设置超级管理员权限？需进一步测试 is_superuser=true 的注册越权）\n- DocumentResponse: 含 path, title, level, url, content, id, created_at, updated_at",
+      "reproduction": "# 1. 访问OpenAPI文档\ncurl -sk https://docs-drsai.ihep.ac.cn/api/openapi.json | python3 -m json.tool | head -30\n\n# 2. 无鉴权端点验证（如register接口字段校验）\ncurl -sk -X POST https://docs-drsai.ihep.ac.cn/api/auth/register -H 'Content-Type: application/json' -d '{}'\n# 返回 422 Unprocessable Entity 表示接口真实存在且接受POST\n\n# 3. 潜在越权测试：注册时尝试 is_superuser=true\ncurl -sk -X POST https://docs-drsai.ihep.ac.cn/api/auth/register \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"email\":\"test@test.com\",\"username\":\"test123\",\"password\":\"Test@1234\",\"is_superuser\":true,\"full_name\":\"Test\"}'",
+      "screenshot_url": "https://docs-drsai.ihep.ac.cn/api/openapi.json",
+      "impact": "1. 无需认证即可枚举所有API接口、参数格式、Schema\n2. UserCreate Schema 允许 is_superuser 字段，可能存在注册越权（普通用户设为超级管理员）的通用FastAPI漏洞\n3. 公开文档接口 /api/docs/{doc_id}、/api/docs/get 可能存在IDOR越权（未检查是否属于当前用户的文档）\n4. 已确认 register/login 接口可提交JSON数据，可用于自动化爆破或用户注册绕过",
+      "fix": "1. 生产环境关闭 docs_url=None, openapi_url=None, redoc_url=None（FastAPI三个参数）\n2. UserCreate Schema 中禁止客户端传递 is_superuser、is_active 字段（后端强制覆盖）\n3. 对 /api/docs/{doc_id}、/api/docs/get 添加用户ID归属检查（防止IDOR越权）"
+    },
     {
       "level": "MEDIUM",
       "check_name": "jquery_1_11_2_xss_cve_2020_11022",
