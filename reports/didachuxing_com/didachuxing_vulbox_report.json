@@ -1,0 +1,164 @@
+{
+  "target": "www.didachuxing.com",
+  "organization": "北京畅行信息技术有限公司（嘀嗒出行 Dida Inc.）",
+  "scan_time": "2026-08-15 18:45:00",
+  "platform": "漏洞盒子 (QZSRC标准)",
+  "platform_standard_url": "https://qzsrc.vulbox.com/news/detail-568-2",
+  "asset_inventory": {
+    "主域名": ["www.didachuxing.com", "www.didapinche.com"],
+    "存活子域名": [
+      "www.didachuxing.com (openresty/Nuxt.js, 47468B) - 主站",
+      "www.didapinche.com (同主站内容) - 关联域名",
+      "mail.didachuxing.com (腾讯企业邮箱, 30195B)",
+      "mail.didapinche.com (腾讯企业邮箱, 30225B)",
+      "static.didapinche.com (409 Conflict) - 静态资源",
+      "cache1.didapinche.com (409) - CDN缓存",
+      "img.didapinche.com (409) - 图片服务",
+      "cdn.didapinche.com (200, 0B) - CDN",
+      "www-ecs.didapinche.com (301→HTTP明文) - ECS测试环境",
+      "www-ecs.didachuxing.com (301→HTTP明文) - ECS测试环境",
+      "web-simu.didachuxing.com (404) - 模拟环境",
+      "web.didachuxing.com (/web-toapp/ 下载页, 4152B)"
+    ],
+    "技术栈": "openresty + Nuxt.js (Vue SSR) + PHP (投资者关系页面) + 腾讯企业邮箱",
+    "WAF": "存在 (624状态码拦截敏感路径, 244B拦截XSS/SQL payload)"
+  },
+  "summary": {
+    "高危": 0,
+    "中危": 2,
+    "低危": 5,
+    "信息": 2
+  },
+  "findings": [
+    {
+      "id": 1,
+      "level": "中危",
+      "title": "前端JavaScript硬编码API认证密钥（AES密钥+HMAC密钥+Credential ID）",
+      "qzsrc_category": "比较严重的信息泄漏漏洞 - 敏感信息泄露",
+      "cwe": "CWE-200 / CWE-798",
+      "affected_url": "https://static.didapinche.com/b_html/html/didaweb/ajax.js",
+      "status": "已验证 ✅",
+      "description": "嘀嗒出行前端JavaScript文件 ajax.js (60KB, webpack打包) 中硬编码了完整的API认证密钥体系，包括：\n\n1. AES加密密钥: bShORr6y6EQ= (base64编码)\n   - 用于加密 ddcinfo 字段（设备信息）\n   - 严重缺陷：同一密钥同时用作AES key和IV\n\n2. HMAC-SHA256签名密钥: TC360cdbe02dfcceadf4460629a5081a2c91236a578c3f165d422db7b39f67598b1\n   - 用于TC3-HMAC-SHA256 API认证签名\n   - HMAC前缀key: 'webh5'\n\n3. API Credential ID: 14f108e92470bdb6a9491fe038b68632036d20f13dbf23d9a935452de698e025\n   - 用于X-TC-Authorization请求头\n\n4. 完整签名算法: 代码中包含完整的TC3-HMAC-SHA256签名计算流程（HMAC派生：SecretDate→SecretService→SecretSigning→Signature）\n\n5. 环境信息泄露: 代码暴露了ECS测试环境子域名命名规则 (www-ecs/web-ecs/web-simu)\n\n6. access_token存储位置泄露: URL参数、Cookie、localStorage、sessionStorage、请求头",
+      "reproduction": "# 1. 访问公开JS文件\ncurl -sk https://static.didapinche.com/b_html/html/didaweb/ajax.js | grep -oP 'bShORr6y6EQ='\n# 输出: bShORr6y6EQ= (AES密钥)\n\ncurl -sk https://static.didapinche.com/b_html/html/didaweb/ajax.js | grep -oP 'TC3[0-9a-f]{60,}'\n# 输出: TC360cdbe02dfcceadf4460629a5081a2c91236a578c3f165d422db7b39f67598b1 (HMAC密钥)\n\n# 2. 密钥用于API认证签名\ncurl -sk https://static.didapinche.com/b_html/html/didaweb/ajax.js | grep -oP '14f108e92470bdb6a9491fe038b68632036d20f13dbf23d9a935452de698e025'\n# 输出: 14f108e92470bdb6a9491fe038b68632036d20f13dbf23d9a935452de698e025 (Credential ID)",
+      "impact": "1. 攻击者可使用泄露的AES密钥加密/解密ddcinfo字段，伪造设备信息\n2. 攻击者可使用HMAC密钥和Credential ID伪造合法的TC3-HMAC-SHA256 API签名，绕过API认证\n3. 攻击者可逆向完整签名算法，编写自动化API调用工具\n4. ECS环境命名规则暴露，攻击者可推测测试环境子域名（已验证www-ecs/web-simu可公网访问）",
+      "fix": "1. 将API密钥迁移到服务端，前端通过session/token方式获取签名\n2. 如必须在前端使用，采用短期有效的临时密钥（STS方式）\n3. AES加密使用随机IV，不重复使用key作为IV\n4. 移除代码中的环境信息判断逻辑（isEnvECS等）",
+      "pass_review_probability": "高 - 敏感信息泄露（API密钥）是QZSRC明确接受的中危类型"
+    },
+    {
+      "id": 2,
+      "level": "中危",
+      "title": "9个投资者关系PHP页面完全缺失所有安全响应头（X-Frame-Options/CSP/HSTS等全部为0）",
+      "qzsrc_category": "安全配置缺陷 - 可被Clickjacking攻击",
+      "cwe": "CWE-16 / CWE-1021",
+      "affected_url": "https://www.didachuxing.com/ir/sc/ir_info.php (及其他8个PHP页面)",
+      "affected_pages": [
+        "/ir/sc/ir_info.php", "/ir/sc/ir_news.php", "/ir/sc/ir_report.php",
+        "/ir/sc/ir_ann.php", "/ir/sc/ir_gov.php", "/ir/sc/ir_inquiry.php",
+        "/ir/sc/ir_media.php", "/ir/sc/ir_presentation.php", "/ir/sc/ir_prospectus.php"
+      ],
+      "status": "已验证 ✅ (9个页面全部缺失，3种语言版本共27个页面受影响)",
+      "description": "嘀嗒出行投资者关系页面（/ir/sc/*.php）运行在独立PHP服务上，与主站Nuxt.js应用使用不同安全配置。\n\n主站(www.didachuxing.com)有3个安全头: x-xss-protection, x-content-type-options, x-download-options\nPHP页面: 0个安全头（HSTS=0, X-Frame-Options=0, CSP=0, X-Content-Type-Options=0, X-XSS-Protection=0）\n\n这意味着投资者关系页面可被：\n- iframe嵌入 → Clickjacking点击劫持攻击\n- MIME嗅探攻击\n- 无XSS额外防护\n- 无HSTS保护\n\n影响范围: 3种语言(simple/traditional/english) × 9个页面 = 27个URL受影响",
+      "reproduction": "# 对比主站与PHP页面的安全头\ncurl -skI https://www.didachuxing.com/ | grep -iE 'x-xss|x-content|x-download'\n# 输出:\n# x-xss-protection: 1; mode=block\n# x-content-type-options: nosniff\n# x-download-options: noopen\n\ncurl -skI https://www.didachuxing.com/ir/sc/ir_info.php | grep -iE 'x-xss|x-content|x-download|x-frame|strict-transport|content-security'\n# 输出: (空 - 全部缺失)\n\n# 验证全部9个PHP页面\nfor page in ir_info ir_news ir_report ir_ann ir_gov ir_inquiry ir_media ir_presentation ir_prospectus; do\n  echo -n \"${page}.php: \"\n  curl -skI https://www.didachuxing.com/ir/sc/${page}.php | grep -ciE 'x-frame|x-content|x-xss|strict-transport|content-security'\ndone\n# 输出: 全部为0",
+      "impact": "1. 无X-Frame-Options → 攻击者可将投资者关系页面嵌入恶意iframe，实施Clickjacking\n2. 无CSP → 无XSS额外防护层\n3. 无X-Content-Type-Options → 浏览器MIME嗅探攻击\n4. 无HSTS → SSL Strip中间人攻击\n5. 作为上市公司（港股HK:02559）投资者关系页面，被Clickjacking攻击可能影响投资者信任",
+      "fix": "1. 在openresty配置中为/ir/路径添加所有安全响应头\n2. 添加: X-Frame-Options: SAMEORIGIN\n3. 添加: Strict-Transport-Security: max-age=31536000; includeSubDomains\n4. 添加: X-Content-Type-Options: nosniff\n5. 添加: Content-Security-Policy: default-src 'self'",
+      "pass_review_probability": "中 - 安全头缺失是常见接受类型，9个页面+3语言=27个URL扩大了影响范围"
+    },
+    {
+      "id": 3,
+      "level": "低危",
+      "title": "全站HSTS缺失（www/mail/ecs等所有域名均无Strict-Transport-Security）",
+      "qzsrc_category": "安全配置缺陷",
+      "cwe": "CWE-319 / CWE-757",
+      "affected_url": "https://www.didachuxing.com/ (及所有子域名)",
+      "status": "已验证 ✅",
+      "description": "嘀嗒出行所有域名均未配置HSTS (Strict-Transport-Security) 头：\n- www.didachuxing.com → HSTS缺失\n- www.didapinche.com → HSTS缺失\n- mail.didachuxing.com → HSTS缺失\n- mail.didapinche.com → HSTS缺失\n- www-ecs.didapinche.com → HSTS缺失\n\n虽然HTTP会301跳转到HTTPS，但首次HTTP请求仍可被中间人攻击劫持（SSL Strip）。",
+      "reproduction": "curl -skI https://www.didachuxing.com/ | grep -i strict-transport\n# 输出: (空)\n\ncurl -skI https://www.didapinche.com/ | grep -i strict-transport\n# 输出: (空)",
+      "impact": "攻击者可执行SSL Strip中间人攻击，将HTTPS降级为HTTP明文",
+      "fix": "添加 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "pass_review_probability": "高 - HSTS缺失是补天/漏洞盒子常见接受类型"
+    },
+    {
+      "id": 4,
+      "level": "低危",
+      "title": "主站及所有子域名X-Frame-Options缺失（Clickjacking点击劫持）",
+      "qzsrc_category": "安全配置缺陷",
+      "cwe": "CWE-1021",
+      "affected_url": "https://www.didachuxing.com/ (及所有子域名)",
+      "status": "已验证 ✅",
+      "description": "嘀嗒出行主站(www.didachuxing.com)及所有子域名均未配置X-Frame-Options响应头，可被任意网站iframe嵌入，实施Clickjacking点击劫持攻击。",
+      "reproduction": "curl -skI https://www.didachuxing.com/ | grep -i x-frame\n# 输出: (空)\n\n# 可被iframe嵌入:\n# <iframe src=\"https://www.didachuxing.com/\" style=\"opacity:0.1\"></iframe>",
+      "impact": "攻击者可构造恶意页面，将嘀嗒出行网站透明覆盖在诱饵内容上，诱导用户点击",
+      "fix": "添加 X-Frame-Options: SAMEORIGIN 或 CSP frame-ancestors 'self'",
+      "pass_review_probability": "中 - Clickjacking是常见接受类型，但部分平台要求有实际利用场景"
+    },
+    {
+      "id": 5,
+      "level": "低危",
+      "title": "ECS测试环境公网可访问且HTTPS降级HTTP明文传输",
+      "qzsrc_category": "安全配置缺陷 - 测试环境暴露",
+      "cwe": "CWE-200 / CWE-319",
+      "affected_url": "https://www-ecs.didapinche.com/ (及www-ecs.didachuxing.com)",
+      "status": "已验证 ✅",
+      "description": "通过ajax.js代码泄露的ECS环境命名规则，发现以下测试环境可公网访问：\n- www-ecs.didapinche.com → 301跳转到 http://www-ecs.didapinche.com/homepage/ (HTTP明文!)\n- www-ecs.didachuxing.com → 同上\n- web-simu.didachuxing.com → 404 (服务存活但根路径无内容)\n\nwww-ecs环境不仅公网可访问，且HTTPS强制301跳转到HTTP明文（协议降级），与生产环境形成鲜明对比。同时这些ECS环境也缺失所有安全头。\n\nwww-ecs.didapinche.com 同时暴露了生产环境相同的 /homepage/ (47468B) 和 /ir/sc/ir_info.php (24056B)。",
+      "reproduction": "curl -skI https://www-ecs.didapinche.com/ | grep -i location\n# 输出: location: http://www-ecs.didapinche.com/homepage/ (HTTPS降级到HTTP明文)\n\ncurl -sk -o /dev/null -w '%{http_code}' https://www-ecs.didapinche.com/homepage/\n# 输出: 200 (ECS环境可公网访问)",
+      "impact": "1. 测试环境公网暴露，攻击者可探测测试功能/API\n2. HTTPS降级HTTP明文传输，可被中间人攻击\n3. 测试环境可能包含测试数据、调试接口、弱密码等",
+      "fix": "1. 将ECS测试环境限制为内网访问（VPN/堡垒机）\n2. 如需公网访问，配置正确的HTTPS（禁止降级HTTP）\n3. 添加访问控制（IP白名单或Basic Auth）",
+      "pass_review_probability": "中 - 测试环境暴露+协议降级组合提交"
+    },
+    {
+      "id": 6,
+      "level": "低危",
+      "title": "投资者关系页面混合内容（HTTPS页面包含HTTP明文链接）",
+      "qzsrc_category": "安全配置缺陷 - 混合内容",
+      "cwe": "CWE-319",
+      "affected_url": "https://www.didachuxing.com/ir/sc/ir_info.php",
+      "status": "已验证 ✅",
+      "description": "HTTPS页面 /ir/sc/ir_info.php 中包含HTTP明文链接 http://www.didapinche.com/homepage/，属于混合内容缺陷。浏览器可能阻止加载该资源或显示安全警告。",
+      "reproduction": "curl -sk https://www.didachuxing.com/ir/sc/ir_info.php | grep -oP 'http://[^\"'\\''<> ]+' | grep -v w3.org\n# 输出: http://www.didapinche.com/homepage/",
+      "impact": "浏览器安全标识降级，HTTP链接可被中间人攻击篡改",
+      "fix": "将 http://www.didapinche.com/homepage/ 改为 https://www.didapinche.com/homepage/",
+      "pass_review_probability": "高 - 混合内容是常见接受类型"
+    },
+    {
+      "id": 7,
+      "level": "低危",
+      "title": "服务器版本信息泄露（Server: openresty）",
+      "qzsrc_category": "信息泄露",
+      "cwe": "CWE-200",
+      "affected_url": "https://www.didachuxing.com/ (所有页面)",
+      "status": "已验证 ✅",
+      "description": "所有HTTP响应头中泄露 Server: openresty，攻击者可据此搜索对应版本的已知漏洞。",
+      "reproduction": "curl -skI https://www.didachuxing.com/ | grep -i server\n# 输出: server: openresty",
+      "impact": "攻击者可识别服务器类型，针对openresty/nginx已知漏洞进行攻击",
+      "fix": "配置 server_tokens off; 和 more_clear_headers 'Server';",
+      "pass_review_probability": "低 - 单独版本信息泄露通常不被接受，建议与其他漏洞合并提交"
+    },
+    {
+      "id": 8,
+      "level": "信息",
+      "title": "投资者关系系统参数反射（非SQL注入，无安全影响）",
+      "status": "已验证为误报 ✅",
+      "description": "9个PHP页面的id/year参数在响应中反射于语言切换链接（href=\"../en/ir_news.php?id=VALUE\"），diff分析证实参数仅反射在href属性中，不参与SQL查询。WAF拦截所有含空格/引号的SQL注入payload（返回244B拦截页面）。ir_ann.php的year参数显示不同年份返回不同大小的公告列表（year=2026: 30041B, year=2020: 18839B），证实year参数被正确用于数据库查询（参数化查询），非SQL注入。",
+      "reproduction": "diff <(curl -sk 'https://www.didachuxing.com/ir/sc/ir_ann.php?year=2023AND1=1') <(curl -sk 'https://www.didachuxing.com/ir/sc/ir_ann.php?year=2023AND1=2')\n# 差异仅在语言切换链接中的反射值，无数据库内容差异"
+    },
+    {
+      "id": 9,
+      "level": "信息",
+      "title": "git-new.didapinche.com Git服务器域名存在但服务不可达",
+      "status": "已验证 ✅ (服务宕机/限制访问)",
+      "description": "crt.sh证书透明日志显示 git-new.didapinche.com 存在（可能为GitLab/Gitea），但HTTPS TLS握手失败（SSL_ERROR_SYSCALL），HTTP返回502。服务可能已下线或限制IP访问。如恢复服务需重新评估。"
+    }
+  ],
+  "submission_strategy": {
+    "优先提交顺序": [
+      "#1 硬编码API密钥 (中危) - 最高价值，敏感信息泄露",
+      "#2 PHP页面安全头缺失 (中危) - 27个URL影响范围大",
+      "#3 HSTS缺失 (低危) - 全站4+域名",
+      "#4 X-Frame-Options缺失 (低危) - Clickjacking",
+      "#5 ECS测试环境暴露+HTTPS降级 (低危) - 测试环境+协议降级",
+      "#6 混合内容 (低危) - 单独提交或合并",
+      "#7 服务器版本泄露 (低危) - 建议合并提交"
+    ],
+    "平台注意": "QZSRC标准中，同系统同类型漏洞仅前3个正常收取，后续降级。建议不同类型漏洞分开提交。"
+  }
+}
