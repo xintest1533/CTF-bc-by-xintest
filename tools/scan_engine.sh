@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# 通用漏洞扫描引擎 v2.0
-# 基于三目标实战验证: ihep.cas.cn + bpeg.cn + didachuxing.com
+# 通用漏洞扫描引擎 v2.2
+# 基于六目标实战验证: ihep.cas.cn + bpeg.cn + didachuxing.com + qzsec + qschou + htd.cn
 # 特性:
 #   - 子域名枚举 (crt.sh + 字典)
 #   - 敏感路径扫描 (含WAF拦截识别)
@@ -420,20 +420,194 @@ except: pass
 # 阶段7: CORS测试
 # ============================================================
 phase7_cors() {
-    log "阶段7: CORS配置测试"
+    log "阶段7: CORS配置测试 (Origin反射+Credentials检测,3次验证)"
 
-    for origin in "null" "http://evil.com" "https://evil.com"; do
-        local resp=$(curl -skI -A "$UA" --max-time 3 -H "Origin: ${origin}" "https://${TARGET}/" 2>/dev/null)
-        local acao=$(echo "$resp" | safe_grep -i "access-control-allow-origin" | tr -d '\r')
-        local acac=$(echo "$resp" | safe_grep -i "access-control-allow-credentials" | tr -d '\r')
-        if [[ -n "$acao" ]]; then
-            if echo "$acao" | safe_grep -qi "$origin" || echo "$acao" | safe_grep -qi "*"; then
-                critical "CORS配置错误: Origin=${origin} → ${acao}"
-                [[ -n "$acac" ]] && critical "  + ${acac} (Credentials可跨域!)"
-                echo "  {\"phase\":\"cors\",\"origin\":\"$origin\",\"allow_origin\":\"${acao//\"/\\\"}\",\"credentials\":\"${acac//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+    # CORS测试Origin列表 (按实战价值排序)
+    local origins=("null" "http://evil.com" "https://evil.com" "https://${TARGET}" "http://${TARGET}" "https://attacker.${TARGET}" "https://${TARGET}.evil.com")
+    local cors_serious_found=false
+
+    # 3次重复验证,确认不是偶发
+    for round in 1 2 3; do
+        for origin in "${origins[@]}"; do
+            local resp=$(curl -skI -A "$UA" --max-time 3 -H "Origin: ${origin}" "https://${TARGET}/" 2>/dev/null)
+            local acao=$(echo "$resp" | safe_grep -i "access-control-allow-origin" | tr -d '\r' | head -1)
+            local acac=$(echo "$resp" | safe_grep -i "access-control-allow-credentials" | tr -d '\r' | head -1)
+            local acah=$(echo "$resp" | safe_grep -i "access-control-allow-headers" | tr -d '\r' | head -1)
+
+            if [[ -n "$acao" ]]; then
+                # 判断是否反射了任意Origin
+                local origin_reflected=false
+                local wildcard=false
+                local credentials_on=false
+                local headers_wildcard=false
+
+                if echo "$acao" | safe_grep -qi "$origin"; then
+                    origin_reflected=true
+                elif echo "$acao" | safe_grep -qi "\*"; then
+                    wildcard=true
+                fi
+                if echo "$acac" | safe_grep -qi "true"; then
+                    credentials_on=true
+                fi
+                if echo "$acah" | safe_grep -qi "\*"; then
+                    headers_wildcard=true
+                fi
+
+                # 分类评估严重程度
+                if $origin_reflected && $credentials_on; then
+                    critical "[轮${round}] CORS严重配置错误: Origin=${origin} → 反射Origin + Credentials:true (可跨域窃取数据!)"
+                    cors_serious_found=true
+                    echo "  {\"phase\":\"cors\",\"severity\":\"CRITICAL\",\"round\":$round,\"origin\":\"${origin}\",\"allow_origin\":\"${acao//\"/\\\"}\",\"credentials\":\"${acac//\"/\\\"}\",\"allow_headers\":\"${acah//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+                    break 2
+                elif $origin_reflected; then
+                    if [[ $round -eq 1 ]]; then
+                        critical "[轮${round}] CORS配置错误: Origin=${origin} → ${acao}"
+                        $credentials_on && critical "  + ${acac} (Credentials可跨域!)"
+                        $headers_wildcard && critical "  + ${acah} (Headers通配!)"
+                        echo "  {\"phase\":\"cors\",\"severity\":\"MEDIUM\",\"round\":$round,\"origin\":\"${origin}\",\"allow_origin\":\"${acao//\"/\\\"}\",\"credentials\":\"${acac//\"/\\\"}\",\"allow_headers\":\"${acah//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+                    fi
+                elif $wildcard; then
+                    if [[ $round -eq 1 ]]; then
+                        warn "[轮${round}] CORS配置错误: Origin=${origin} → 通配符*, 需检查Credentials: ${acac}"
+                        echo "  {\"phase\":\"cors\",\"severity\":\"LOW\",\"round\":$round,\"origin\":\"${origin}\",\"allow_origin\":\"${acao//\"/\\\"}\",\"credentials\":\"${acac//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+                    fi
+                fi
             fi
+        done
+    done
+
+    # 所有路径测试 (确认是否全站CORS,不只是首页)
+    if $cors_serious_found; then
+        info "检测到全站CORS配置缺陷,验证其他路径..."
+        local paths_all=("/" "/api" "/api/v1" "/api/user" "/login" "/static/" "/about")
+        for path in "${paths_all[@]}"; do
+            local resp2=$(curl -skI -A "$UA" --max-time 3 -H "Origin: https://evil.com" "https://${TARGET}${path}" 2>/dev/null)
+            local acao2=$(echo "$resp2" | safe_grep -i "access-control-allow-origin" | tr -d '\r' | head -1)
+            local acac2=$(echo "$resp2" | safe_grep -i "access-control-allow-credentials" | tr -d '\r' | head -1)
+            if echo "$acao2" | safe_grep -qi "evil.com"; then
+                info "  路径${path}: CORS同样受影响 → ${acao2}"
+            fi
+        done
+        echo "  {\"phase\":\"cors\",\"severity\":\"IMPACT\",\"affected_paths\":\"ALL\",\"note\":\"全站所有路径受CORS配置缺陷影响,不仅首页\"}," >> "$FINDINGS_FILE"
+    fi
+}
+
+# ============================================================
+# 阶段12: 302响应头信息泄露 (dashboard路径参数泄露)
+# ============================================================
+phase12_redirect_leak() {
+    [[ "$QUICK" == "true" ]] && return
+    log "阶段12: 302响应头信息泄露检测"
+
+    local targets=("${TARGET}" "bi.${TARGET}" "dashboard.${TARGET}" "oa.${TARGET}" "report.${TARGET}" "api.${TARGET}")
+
+    for target_host in "${targets[@]}"; do
+        # DNS探测优先
+        local has_dns=$(dig +short "${target_host}" A 2>/dev/null | wc -c)
+        [[ "$has_dns" -lt 3 ]] && continue
+
+        for proto in "http" "https"; do
+            local resp_headers=$(curl -skI -A "$UA" --max-time 4 "${proto}://${target_host}/" 2>/dev/null)
+            local http_code=$(echo "$resp_headers" | safe_grep -i "^HTTP" | tail -1 | awk '{print $2}')
+            local location=$(echo "$resp_headers" | safe_grep -i "^location:" | tr -d '\r' | head -1 | sed 's/^[Ll]ocation: //')
+
+            if [[ -n "$location" && -n "$http_code" ]]; then
+                # 检测302 Location中的敏感信息泄露
+                local has_leak=false
+                local leak_info=""
+
+                # 帆软FineReport路径泄露
+                if echo "$location" | safe_grep -qiE "WebReport|ReportServer|decision|viewlet|FineReport"; then
+                    has_leak=true
+                    leak_info="帆软报表系统: WebReport/decision路径"
+                    local viewlet=$(echo "$location" | safe_grep -oP 'viewlet=([^&]+)' | head -1)
+                    local ref_c=$(echo "$location" | safe_grep -oP 'ref_c=([^&]+)' | head -1)
+                    [[ -n "$viewlet" ]] && leak_info="${leak_info} + viewlet参数: ${viewlet}"
+                    [[ -n "$ref_c" ]] && leak_info="${leak_info} + 会话引用UUID: ${ref_c}"
+                fi
+
+                # 内部路径泄露 /api/ /admin/ /console/
+                if echo "$location" | safe_grep -qiE "(/(api|admin|console|debug|internal|internal-api|private)/|[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4})"; then
+                    if ! $has_leak; then
+                        has_leak=true
+                        leak_info=""
+                    fi
+                    local internal=$(echo "$location" | safe_grep -oP '(/(api|admin|console|debug|internal|private)/[a-zA-Z0-9_\-\/.%]+)' | head -1)
+                    local uuid=$(echo "$location" | safe_grep -oP '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}' | head -1)
+                    [[ -n "$internal" ]] && leak_info="${leak_info} + 内部路径: ${internal}"
+                    [[ -n "$uuid" ]] && leak_info="${leak_info} + UUID泄露: ${uuid}"
+                fi
+
+                # 协议降级检测
+                if echo "$location" | safe_grep -qi "^http://"; then
+                    [[ -z "$leak_info" ]] && leak_info=""
+                    leak_info="${leak_info} + 协议降级(302跳HTTP明文)"
+                    has_leak=true
+                fi
+
+                if $has_leak; then
+                    critical "302响应头泄露: ${proto}://${target_host}/ → ${location:0:120}"
+                    warn "  泄露内容: ${leak_info}"
+                    echo "  {\"phase\":\"redirect_leak\",\"host\":\"${target_host}\",\"proto\":\"${proto}\",\"code\":${http_code},\"location\":\"${location//\"/\\\"}\",\"leaked_info\":\"${leak_info//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+                fi
+            fi
+
+            # 403 IP白名单检测 (548B nginx 403)
+            local body_file="$TMPDIR/redirect_body_${target_host}_${proto}.txt"
+            curl -sk -A "$UA" --max-time 4 "${proto}://${target_host}/" -o "$body_file" 2>/dev/null
+            local sz=$(wc -c < "$body_file" 2>/dev/null || echo 0)
+            if [[ "$sz" -eq 548 ]] && safe_grep -qi "403 Forbidden" "$body_file"; then
+                warn "疑似Nginx IP白名单限制: ${proto}://${target_host}/ → 403 (548B)"
+                if safe_grep -qiE "WebReport|ReportServer|decision" "$location"; then
+                    warn "  → 302目标为帆软FineReport,确认为IP白名单拦截 (已验证403) → 可作为信息泄露漏洞提交"
+                fi
+                echo "  {\"phase\":\"ip_whitelist_403\",\"host\":\"${target_host}\",\"proto\":\"${proto}\",\"size\":${sz},\"code\":403,\"redirect_target\":\"${location//\"/\\\"}\"}," >> "$FINDINGS_FILE"
+            fi
+        done
+    done
+}
+
+# ============================================================
+# 阶段13: 阿里云WAF Cookie + WAF识别
+# ============================================================
+phase13_waf_cookie() {
+    log "阶段13: WAF Cookie识别 + 防护能力评估"
+
+    local waf_detected=""
+    local waf_cookies=0
+
+    for proto in "https" "http"; do
+        local cookies=$(curl -skI -A "$UA" --max-time 3 "${proto}://${TARGET}/" 2>/dev/null | safe_grep -i "set-cookie" | tr -d '\r')
+        [[ -z "$cookies" ]] && continue
+
+        # 阿里云WAF检测 (acw_tc是阿里云WAF特有的追踪Cookie)
+        if echo "$cookies" | safe_grep -qi "acw_tc"; then
+            waf_detected="阿里云WAF (Aliyun)"
+            local no_secure_count=$(echo "$cookies" | safe_grep -civ "secure" || echo 0)
+            local no_samesite_count=$(echo "$cookies" | safe_grep -civ "samesite" || echo 0)
+            waf_cookies=$(echo "$cookies" | safe_grep -ic "acw_tc" || echo 0)
+            warn "WAF识别: ${waf_detected} (Cookie: acw_tc, ${waf_cookies}个防护Cookie)"
+            if [[ $no_secure_count -gt 0 ]]; then
+                critical "WAF Cookie安全缺陷: acw_tc缺少Secure标志! (${no_secure_count}个明文段传输)"
+            fi
+            if [[ $no_samesite_count -gt 0 ]]; then
+                warn "WAF Cookie安全缺陷: acw_tc缺少SameSite标志! (${no_samesite_count}个)"
+            fi
+            echo "  {\"phase\":\"waf\",\"vendor\":\"阿里云WAF\",\"cookie_name\":\"acw_tc\",\"secure_missing\":$no_secure_count,\"samesite_missing\":$no_samesite_count}," >> "$FINDINGS_FILE"
+            break
+        fi
+
+        # 其他WAF Cookie识别 (HWWAFSESID = 华为WAF)
+        if echo "$cookies" | safe_grep -qiE "HWWAFSESID|HWWAFSESTIME"; then
+            waf_detected="华为云WAF"
+            echo "  {\"phase\":\"waf\",\"vendor\":\"华为云WAF\"}," >> "$FINDINGS_FILE"
+            break
         fi
     done
+
+    if [[ -z "$waf_detected" ]]; then
+        info "未检测到已知WAF Cookie特征"
+    fi
 }
 
 # ============================================================
@@ -608,7 +782,7 @@ generate_report() {
 # ============================================================
 main() {
     echo -e "${BLUE}============================================${NC}"
-    echo -e "${BLUE}  通用漏洞扫描引擎 v2.1${NC}"
+    echo -e "${BLUE}  通用漏洞扫描引擎 v2.2${NC}"
     echo -e "${BLUE}  目标: ${TARGET}${NC}"
     echo -e "${BLUE}============================================${NC}"
 
@@ -626,6 +800,8 @@ main() {
     [[ "$QUICK" != "true" ]] && phase9_php_params
     phase10_internal_port
     phase11_oss_bucket
+    [[ "$QUICK" != "true" ]] && phase12_redirect_leak
+    phase13_waf_cookie
     generate_report
 
     # 清理

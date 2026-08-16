@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-多平台漏洞报告生成器 v2.0
+多平台漏洞报告生成器 v2.2
 支持: 补天(butian) / 漏洞盒子(vulbox/QZSRC) / 通杀(universal)
+新增：CORS反射Origin漏洞模板 + 帆软FineReport路径泄露模板
 """
 import json, argparse, os, sys
 from datetime import datetime
@@ -219,6 +220,48 @@ def generate_finding_template(vuln_type, target, **kwargs):
             "fix": "自定义错误页面，隐藏Server头中的内部主机名",
             "pass_review_probability": "高",
             "hostname": kwargs.get("hostname", ""),
+        },
+        "cors_reflect_origin": {
+            "level": "中危",
+            "title": "CORS配置反射任意Origin并允许Credentials，可跨域窃取用户会话数据",
+            "cwe": "CWE-942",
+            "cvss_score": "6.5",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", "CORS配置存在严重缺陷。服务器响应头直接反射任意Origin（包括http://evil.com、null、*.target.evil.com等完全不受信任域名），同时设置了Access-Control-Allow-Credentials: true和Access-Control-Allow-Headers: *。任何恶意网站都可以携带用户Cookie凭证发起跨域请求，并读取完整的响应内容。"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk -D - -o /dev/null -H \"Origin: https://evil.com\" \"https://{target}/\" | grep -i access-control"),
+            "impact": "1. 攻击者在恶意页面放置JS，受害者访问后自动携带Cookie跨域请求目标站点\n2. 攻击者可读取完整响应（含用户会话、CSRF Token等）\n3. 攻击者可执行用户身份下的任意请求（读取数据、提交表单等）\n4. 若全站路径均受影响，可造成大规模用户数据泄露",
+            "fix": "严禁反射任意Origin，改为严格白名单。Nginx配置示例：map $http_origin $allow_origin { default \"\"; \"~^https?://(www.)?example.com$\" $http_origin; } add_header Access-Control-Allow-Origin $allow_origin always; add_header Access-Control-Allow-Credentials \"true\";",
+            "pass_review_probability": "高",
+            "details": kwargs.get("details", {"origins_tested": ["null", "http://evil.com", "https://evil.com"], "credentials": True}),
+        },
+        "finereport_path_leak": {
+            "level": "低危",
+            "title": "302响应头泄露帆软FineReport报表完整大屏路径和会话参数",
+            "cwe": "CWE-200",
+            "cvss_score": "4.3",
+            "affected_url": kwargs.get("affected_url", f"https://dashboard.{target}/"),
+            "status": "已验证",
+            "description": kwargs.get("description", "dashboard子域302响应头直接暴露了帆软FineReport决策系统的完整大屏路径和所有参数，包括：WebReport/decision系统路径、大屏报表具体模块路径（DW4.0/topical_theme_analysis）、会话引用UUID（ref_c参数）、design设计模式参数。虽然报表路径可能被IP白名单403拦截，但响应头本身泄露了完整内部业务结构。"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk -D - -o /dev/null \"http://dashboard.{target}/\" | grep -i location"),
+            "impact": "1. 暴露公司使用帆软FineReport报表系统（攻击者可针对帆软已知漏洞POC，如CVE-2022-25457任意文件上传）\n2. 暴露报表大屏的具体模块和命名规则（DW4.0/topical_theme_analysis/develops_big_screens）\n3. 暴露会话引用UUID，可尝试重放\n4. 403+帆软的组合确认为IP白名单配置，可针对性绕过",
+            "fix": "1. dashboard和bi等报表子域添加内网IP白名单，禁止公网访问\n2. 302响应头的Location改用相对路径，不包含完整报表路径和参数\n3. 帆软报表系统前增加认证代理",
+            "pass_review_probability": "高",
+            "details": kwargs.get("details", {"leaked_path": "/WebReport/decision", "leaked_params": []}),
+        },
+        "waf_cookie_security": {
+            "level": "低危",
+            "title": "WAF防护Cookie缺失Secure/SameSite，HTTP明文传输",
+            "cwe": "CWE-614",
+            "cvss_score": "4.3",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", f"{kwargs.get('waf_vendor', '阿里云WAF')}的防护Cookie（acw_tc等）仅包含HttpOnly标志，缺失Secure和SameSite。更严重的是，HTTP明文连接也设置相同Cookie，可被中间人SSL Strip截获。"),
+            "reproduction": kwargs.get("reproduction", f"curl -skI \"http://{target}/\" | grep -i set-cookie"),
+            "impact": "1. 缺Secure：Cookie在所有HTTP明文连接中传输，可被中间人截获\n2. 缺SameSite：跨站请求默认携带，扩大CSRF攻击面\n3. 防护Cookie被劫持后可绕过WAF识别逻辑",
+            "fix": "为所有Cookie添加Secure和SameSite=Lax属性：Set-Cookie: acw_tc=...; path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=1800",
+            "pass_review_probability": "高",
+            "details": kwargs.get("details", {"cookie_names": ["acw_tc"], "secure_missing": 1, "samesite_missing": 1}),
         },
     }
     return templates.get(vuln_type, {})

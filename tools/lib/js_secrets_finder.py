@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-JS密钥提取器 v2.1
-基于多目标实战验证：支持 Vite SPA检测、OSS Bucket检测、0B重试+代理
+JS密钥提取器 v2.2
+基于多目标实战验证：支持 Vite SPA检测、OSS Bucket检测、0B重试+代理、
+内部环境命名规则(prep/test/docker/prod/gateway)、微服务路径识别
 """
 import sys, re, json, argparse, urllib.request, ssl, os, time
 
@@ -35,6 +36,11 @@ RULES = {
         {"name": "环境判断变量", "pattern": r"isEnv\w+", "filter": None},
         {"name": "域名列表", "pattern": r"(didapinche|didachuxing|didacar|dida-pinche|didataxi)\.com", "filter": None},
         {"name": "ECS/测试环境", "pattern": r"(www-ecs|web-ecs|web-simu|staging|dev-|test-)\.\w+\.\w+", "filter": None},
+        {"name": "预发布环境命名(prep-)", "pattern": r"https?://prep[-][a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+\.[a-zA-Z]+", "filter": None},
+        {"name": "测试环境命名(test-/docker-)", "pattern": r"https?://(test[-_]|docker[-_]|uat[-_]|qa[-_]|staging[-_])[a-zA-Z0-9_\-]*\.[a-zA-Z0-9_\-]+\.[a-zA-Z]+", "filter": None},
+        {"name": "内部API网关(gateway-)", "pattern": r"https?://gateway[a-zA-Z0-9_\-]*\.[a-zA-Z0-9_\-]+\.[a-zA-Z]+", "filter": None},
+        {"name": "生产环境命名(prod-)", "pattern": r"https?://prod[-][a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+\.[a-zA-Z]+", "filter": None},
+        {"name": "微服务路径识别", "pattern": r"['\"](/(?:prod|test|dev|uat|staging|api)/[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-/]+)['\"]", "group": 1, "filter": lambda x: len(x) > 15},
         {"name": "版本号", "pattern": r"version['\"]?\s*[:=]\s*['\"]([0-9]+\.[0-9]+\.[0-9]+)['\"]", "group": 1},
         {"name": "Vite环境变量", "pattern": r"import\.meta\.env\.(VITE_[A-Z_]+)", "group": 1},
         {"name": "Vite环境变量2", "pattern": r"__VITE_[A-Z_]+__", "filter": None},

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# 漏洞扫描工具集 主控脚本 v2.1
+# 漏洞扫描工具集 主控脚本 v2.2
 # 用法: ./vuln-kit.sh <command> [args]
 # ============================================================
 
@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOOLDIR="$SCRIPT_DIR"
 
 usage() {
-    echo "漏洞扫描工具集 v2.1"
-    echo "基于五目标实战: ihep.cas.cn + bpeg.cn + didachuxing.com + qschou.com + qzsec"
+    echo "漏洞扫描工具集 v2.2"
+    echo "基于六目标实战: ihep.cas.cn + bpeg.cn + didachuxing.com + qzsec + qschou + htd.cn"
     echo ""
     echo "命令:"
     echo "  scan <domain>              全量扫描 (子域名+路径+安全头+JS分析+CORS)"
@@ -33,17 +33,14 @@ usage() {
     echo "  --platform vulbox    漏洞盒子(QZSRC)标准"
     echo "  --platform universal 通用标准"
     echo ""
-    echo "新增检测能力 (v2.1):"
-    echo "  ✓ 全站跳转检测 + 自动继续扫描目标域名"
-    echo "  ✓ 完整重定向链跟踪 (HTTPS→HTTP→HTTPS)"
-    echo "  ✓ Cookie安全属性审计 (Secure/HttpOnly/SameSite)"
-    echo "  ✓ 404页面信息泄露 (端口/主机名/服务器类型)"
-    echo "  ✓ OSS Bucket信息泄露检测"
-    echo "  ✓ Vite SPA应用识别与处理"
-    echo "  ✓ 内部端口暴露检测"
-    echo "  ✓ JS 0B文件自动重试+代理检测"
-    echo "  ✓ 开放重定向Catch-All误报排除"
-    echo "  ✓ Server头/404页面主机名泄露"
+    echo "新增检测能力 (v2.2):"
+    echo "  ✓ CORS检测升级: 7种Origin×3轮验证+严重度分类(反射Origin+Credentials判定)"
+    echo "  ✓ CORS全站路径验证: 检测是否所有路径都受CORS缺陷影响"
+    echo "  ✓ 302响应头信息泄露: 帆软FineReport/WebReport路径/viewlet参数/UUID泄露检测"
+    echo "  ✓ Nginx 403 IP白名单识别: 548B固定大小403 + 报表路径重定向判定"
+    echo "  ✓ WAF Cookie识别: 阿里云WAF(acw_tc)/华为云WAF(HWWAFSESID)指纹识别+安全缺陷检测"
+    echo "  ✓ 内部环境命名规则检测: prep-预发布/test-docker-uad-qa测试/gateway-API网关/prod-生产"
+    echo "  ✓ 微服务路径识别: /prod/xxx/middleware-yyy/ 等API网关模式自动提取"
 }
 
 case "${1:-}" in
