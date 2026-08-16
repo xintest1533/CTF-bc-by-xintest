@@ -1,0 +1,24 @@
+[
+  {"phase":"basic","proto":"https","code":302,"size":258,"title":"302 Found"},
+  {"phase":"basic","proto":"http","code":302,"size":258,"title":"302 Found"},
+  {"phase":"headers","present":0,"missing":7,"missing_list":[
+  "HSTS",
+  "X-Frame-Options",
+  "CSP",
+  "X-Content-Type-Options",
+  "X-XSS-Protection",
+  "Referrer-Policy",
+  "Permissions-Policy"
+]},
+  {"phase":"paths","code":403,"size":591,"path":"/.htaccess"},
+  {"phase":"paths","code":403,"size":591,"path":"/.htpasswd"},
+  {"phase":"protocol_downgrade","location":"location: https://www.qsmutual.com"},
+  {"phase":"open_redirect","param":"redirect","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"url","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"return","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"returnUrl","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"next","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"callback","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"goto","redirect":"https://www.qsmutual.com/"},
+  {"phase":"open_redirect","param":"target","redirect":"https://www.qsmutual.com/"}
+]
