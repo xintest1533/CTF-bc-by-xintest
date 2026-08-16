@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-JS密钥提取器 v2.0
-基于 didachuxing.com 实战验证：成功从 ajax.js 提取 AES密钥、HMAC密钥、Credential ID
-支持：URL/本地文件 两种输入模式
+JS密钥提取器 v2.1
+基于多目标实战验证：支持 Vite SPA检测、OSS Bucket检测、0B重试+代理
 """
-import sys, re, json, argparse, urllib.request, ssl, os
+import sys, re, json, argparse, urllib.request, ssl, os, time
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -30,12 +29,15 @@ RULES = {
         {"name": "GraphQL端点", "pattern": r"['\"](/graphql[^\"'\s]*)['\"]", "group": 1},
         {"name": "Swagger/OpenAPI", "pattern": r"['\"](/[^\"'\s]*(?:swagger|openapi|api-docs)[^\"'\s]*)['\"]", "group": 1},
         {"name": "WebSocket", "pattern": r"wss?://[a-zA-Z0-9._\-]+(:\d+)?/[^\"'\s]+", "filter": None},
+        {"name": "OSS Bucket URL", "pattern": r"https?://[a-zA-Z0-9._\-]+\.(oss-[a-z0-9\-]+\.aliyuncs\.com|s3[^\"'\s]*\.amazonaws\.com|storage\.(googleapis|bunnycdn)\.com)[^\"'\s]*", "filter": None},
     ],
     "环境信息": [
         {"name": "环境判断变量", "pattern": r"isEnv\w+", "filter": None},
         {"name": "域名列表", "pattern": r"(didapinche|didachuxing|didacar|dida-pinche|didataxi)\.com", "filter": None},
         {"name": "ECS/测试环境", "pattern": r"(www-ecs|web-ecs|web-simu|staging|dev-|test-)\.\w+\.\w+", "filter": None},
         {"name": "版本号", "pattern": r"version['\"]?\s*[:=]\s*['\"]([0-9]+\.[0-9]+\.[0-9]+)['\"]", "group": 1},
+        {"name": "Vite环境变量", "pattern": r"import\.meta\.env\.(VITE_[A-Z_]+)", "group": 1},
+        {"name": "Vite环境变量2", "pattern": r"__VITE_[A-Z_]+__", "filter": None},
     ],
     "配置/密码": [
         {"name": "数据库密码", "pattern": r"(password|passwd|pwd|db_pass|db_password)[\"']?\s*[:=]\s*[\"']([^\"']{3,})[\"']", "group": 2},
@@ -46,18 +48,58 @@ RULES = {
     "注释泄露": [
         {"name": "TODO/FIXME", "pattern": r"//\s*(TODO|FIXME|HACK|XXX|BUG|TEMP|DEBUG):?\s*(.{10,50})", "group": 0},
         {"name": "注释中的URL", "pattern": r"//\s*https?://[^\"'\s]{10,}", "filter": None},
-    ]
+    ],
+    "Vite/SPA特征": [
+        {"name": "Vite入口文件", "pattern": r"/assets/index-[a-f0-9]{8}\.js", "filter": None},
+        {"name": "Vite chunk引用", "pattern": r"/assets/[a-zA-Z0-9_-]+-[a-f0-9]{8}\.[a-z]+", "filter": None},
+        {"name": "import.meta", "pattern": r"import\.meta\.(env|url|hot|glob)", "filter": None},
+        {"name": "Vite模块热替换", "pattern": r"__vite__(_injectQuery|_css|_mapDeps|isCSSRequest)", "filter": None},
+    ],
 }
 
 def fetch_content(source):
-    """从URL或本地文件获取内容"""
+    """从URL或本地文件获取内容，支持0B重试和代理检测"""
     if source.startswith(("http://", "https://")):
-        req = urllib.request.Request(source, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.read().decode("utf-8", errors="ignore")
+        # 尝试直连，如果0B则重试+代理
+        max_retries = 3
+        proxies = []
+        # 检测环境变量中的代理
+        for var in ("HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "https_proxy", "http_proxy", "all_proxy"):
+            val = os.environ.get(var, "")
+            if val and val not in proxies:
+                proxies.append(val)
+
+        for attempt in range(max_retries):
+            try:
+                req = urllib.request.Request(source, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"})
+                # 最后一次尝试使用代理（如有）
+                if attempt == max_retries - 1 and proxies:
+                    proxy = proxies[0]
+                    proxy_handler = urllib.request.ProxyHandler({"https": proxy, "http": proxy})
+                    opener = urllib.request.build_opener(proxy_handler)
+                    with opener.open(req, timeout=15) as resp:
+                        data = resp.read()
+                else:
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        data = resp.read()
+                if len(data) == 0:
+                    print(f"[!] 0B文件 (尝试{attempt+1}/{max_retries})，准备重试...")
+                    time.sleep(1)
+                    continue
+                return data.decode("utf-8", errors="ignore")
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[!] 下载失败 (尝试{attempt+1}/{max_retries}): {e}")
+                    time.sleep(1)
+                else:
+                    print(f"[!] 下载失败 (已重试{max_retries}次): {e}")
+                    return ""
+        return ""
     elif os.path.isfile(source):
-        with open(source, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+        content = open(source, "r", encoding="utf-8", errors="ignore").read()
+        if len(content) == 0:
+            print(f"[!] 警告: 本地文件 {source} 大小为0B")
+        return content
     else:
         print(f"[!] 无效源: {source}")
         sys.exit(1)

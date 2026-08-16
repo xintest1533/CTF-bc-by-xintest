@@ -93,6 +93,136 @@ def generate_report(target, platform, findings):
 
     return report
 
+
+def generate_finding_template(vuln_type, target, **kwargs):
+    """生成指定漏洞类型的发现条目模板"""
+    templates = {
+        "cookie_audit": {
+            "level": "中危",
+            "title": "Cookie安全属性缺失",
+            "cwe": "CWE-614",
+            "cvss_score": "5.3",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", "Cookie缺少Secure/HttpOnly/SameSite属性，敏感Cookie可被脚本窃取或通过非HTTPS通道泄露"),
+            "reproduction": kwargs.get("reproduction", f"curl -skI https://{target}/ | grep -i set-cookie"),
+            "impact": "攻击者可通过XSS窃取Cookie，或通过SSL Strip截获Cookie",
+            "fix": "为所有Set-Cookie添加Secure、HttpOnly、SameSite=Lax/Strict属性",
+            "pass_review_probability": "高",
+            "details": kwargs.get("details", {}),
+        },
+        "protocol_downgrade_chain": {
+            "level": "低危",
+            "title": "协议降级链",
+            "cwe": "CWE-319",
+            "cvss_score": "4.0",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", "完整重定向链跟踪发现HTTPS→HTTP→HTTPS协议降级模式，中间环节存在明文传输风险"),
+            "reproduction": kwargs.get("reproduction", f"curl -skIL -o /dev/null -w '%{{redirect_url}}\\n' https://{target}/"),
+            "impact": "中间环节的HTTP请求可能被中间人攻击篡改",
+            "fix": "统一使用HTTPS，确保所有跳转步骤均为HTTPS",
+            "pass_review_probability": "中",
+            "redirect_chain": kwargs.get("redirect_chain", []),
+        },
+        "404_info_leak": {
+            "level": "低危",
+            "title": "404页面信息泄露",
+            "cwe": "CWE-200",
+            "cvss_score": "3.7",
+            "affected_url": f"https://{target}/{kwargs.get('path', 'notexist')}",
+            "status": "已验证",
+            "description": kwargs.get("description", "默认404页面泄露了内部端口、服务器主机名、服务器类型（Tengine/Apache）等敏感信息"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk https://{target}/{kwargs.get('path', 'notexist')}"),
+            "impact": "攻击者可利用泄露信息进行针对性攻击，如端口扫描、服务器指纹识别",
+            "fix": "自定义404页面，不显示内部技术信息",
+            "pass_review_probability": "高",
+            "leaked_info": kwargs.get("leaked_info", {}),
+        },
+        "oss_bucket_leak": {
+            "level": "低危",
+            "title": "OSS Bucket信息泄露",
+            "cwe": "CWE-200",
+            "cvss_score": "3.7",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", "从阿里云OSS XML错误响应中提取到Bucket名称，可能用于后续Bucket遍历攻击"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk https://{kwargs.get('bucket', 'example')}.oss-cn-hangzhou.aliyuncs.com/"),
+            "impact": "Bucket名称泄露后，攻击者可尝试列举文件或进行权限绕过",
+            "fix": "配置OSS Bucket为私有访问，使用CDN或自定义域名，关闭公共列举",
+            "pass_review_probability": "高",
+            "bucket_name": kwargs.get("bucket", ""),
+        },
+        "internal_port_exposure": {
+            "level": "低危",
+            "title": "内部端口暴露",
+            "cwe": "CWE-200",
+            "cvss_score": "3.3",
+            "affected_url": f"https://{target}:{kwargs.get('port', '86')}/",
+            "status": "已验证",
+            "description": kwargs.get("description", f"从404页面URL字段提取到内部端口（{kwargs.get('port', '86')}），该端口可能运行管理后台或内部服务"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk https://{target}:{kwargs.get('port', '86')}/"),
+            "impact": "暴露非标准端口可能扩大攻击面",
+            "fix": "关闭非必要端口，或使用防火墙限制访问来源",
+            "pass_review_probability": "高",
+        },
+        "site_redirect": {
+            "level": "信息",
+            "title": "全站跳转检测",
+            "cwe": "",
+            "cvss_score": "",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", f"目标域名302跳转到另一个域名（{kwargs.get('redirect_target', '')}），可能是品牌迁移或CDN分发"),
+            "reproduction": kwargs.get("reproduction", f"curl -skI https://{target}/ | grep -i location"),
+            "impact": "用户需确认跳转是否预期，避免误报",
+            "fix": "无需修复，但扫描时已自动继续扫描目标域名本身",
+            "pass_review_probability": "高",
+            "redirect_url": kwargs.get("redirect_target", ""),
+        },
+        "catch_all_redirect": {
+            "level": "信息",
+            "title": "开放重定向Catch-All模式（误报排除）",
+            "cwe": "",
+            "cvss_score": "",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": "所有参数返回相同Location，属于catch-all误报模式，非真实开放重定向",
+            "reproduction": kwargs.get("reproduction", f"curl -skI 'https://{target}/?redirect=https://evil.com'"),
+            "impact": "无安全影响，已标记为误报",
+            "fix": "无需修复",
+            "pass_review_probability": "高",
+        },
+        "vite_spa": {
+            "level": "信息",
+            "title": "Vite SPA应用识别",
+            "cwe": "",
+            "cvss_score": "",
+            "affected_url": f"https://{target}/",
+            "status": "已识别",
+            "description": "检测到Vite构建产物特征（/assets/index-*.js、import.meta等），确认为Vite SPA应用",
+            "reproduction": kwargs.get("reproduction", f"curl -sk https://{target}/ | grep -oP '/assets/index-[a-f0-9]{{8}}\\.js'"),
+            "impact": "无直接安全影响，但JS分析时需处理Vite特有的chunk加载和路由拦截",
+            "fix": "无需修复",
+            "pass_review_probability": "高",
+        },
+        "server_hostname_leak": {
+            "level": "低危",
+            "title": "Server头/404页面主机名泄露",
+            "cwe": "CWE-200",
+            "cvss_score": "3.3",
+            "affected_url": f"https://{target}/",
+            "status": "已验证",
+            "description": kwargs.get("description", f"从404页面或Server头提取到内部主机名（{kwargs.get('hostname', '')}），泄露了服务器内部标识"),
+            "reproduction": kwargs.get("reproduction", f"curl -sk https://{target}/notexist"),
+            "impact": "内部主机名泄露可辅助攻击者进行内网渗透",
+            "fix": "自定义错误页面，隐藏Server头中的内部主机名",
+            "pass_review_probability": "高",
+            "hostname": kwargs.get("hostname", ""),
+        },
+    }
+    return templates.get(vuln_type, {})
+
 def main():
     parser = argparse.ArgumentParser(description="多平台漏洞报告生成器 v2.0")
     parser.add_argument("target", help="目标域名")
@@ -126,7 +256,67 @@ def main():
                 "impact": "SSL Strip中间人攻击",
                 "fix": "添加 HSTS: max-age=31536000; includeSubDomains",
                 "pass_review_probability": "高"
-            }
+            },
+            {
+                "id": 3, "level": "中危", "title": "Cookie安全属性缺失",
+                "cwe": "CWE-614", "cvss_score": "5.3",
+                "affected_url": "https://www.example.com/",
+                "description": "Cookie缺少Secure/HttpOnly/SameSite属性，敏感Cookie可被脚本窃取或通过非HTTPS通道泄露",
+                "reproduction": "curl -skI https://www.example.com/ | grep -i set-cookie",
+                "impact": "攻击者可通过XSS窃取Cookie，或通过SSL Strip截获Cookie",
+                "fix": "为所有Set-Cookie添加Secure、HttpOnly、SameSite=Lax/Strict属性",
+                "pass_review_probability": "高"
+            },
+            {
+                "id": 4, "level": "低危", "title": "协议降级链（HTTPS→HTTP→HTTPS）",
+                "cwe": "CWE-319", "cvss_score": "4.0",
+                "affected_url": "https://www.example.com/",
+                "description": "完整重定向链跟踪发现HTTPS→HTTP→HTTPS协议降级模式，中间环节存在明文传输风险",
+                "reproduction": "curl -skIL -o /dev/null -w '%{redirect_url}\\n' https://www.example.com/",
+                "impact": "中间环节的HTTP请求可能被中间人攻击篡改",
+                "fix": "统一使用HTTPS，确保所有跳转步骤均为HTTPS",
+                "pass_review_probability": "中"
+            },
+            {
+                "id": 5, "level": "低危", "title": "404页面信息泄露",
+                "cwe": "CWE-200", "cvss_score": "3.7",
+                "affected_url": "https://www.example.com/notexist",
+                "description": "默认404页面泄露了内部端口、服务器主机名、服务器类型（Tengine/Apache）等敏感信息",
+                "reproduction": "curl -sk https://www.example.com/notexist",
+                "impact": "攻击者可利用泄露信息进行针对性攻击，如端口扫描、服务器指纹识别",
+                "fix": "自定义404页面，不显示内部技术信息",
+                "pass_review_probability": "高"
+            },
+            {
+                "id": 6, "level": "低危", "title": "OSS Bucket信息泄露",
+                "cwe": "CWE-200", "cvss_score": "3.7",
+                "affected_url": "https://www.example.com/",
+                "description": "从阿里云OSS XML错误响应中提取到Bucket名称，可能用于后续Bucket遍历攻击",
+                "reproduction": "curl -sk https://<bucket>.oss-cn-hangzhou.aliyuncs.com/",
+                "impact": "Bucket名称泄露后，攻击者可尝试列举文件或进行权限绕过",
+                "fix": "配置OSS Bucket为私有访问，使用CDN或自定义域名，关闭公共列举",
+                "pass_review_probability": "高"
+            },
+            {
+                "id": 7, "level": "低危", "title": "内部端口暴露",
+                "cwe": "CWE-200", "cvss_score": "3.3",
+                "affected_url": "https://www.example.com:86/",
+                "description": "从404页面URL字段提取到内部端口（86），该端口可能运行管理后台或内部服务",
+                "reproduction": "curl -sk https://www.example.com:86/",
+                "impact": "暴露非标准端口可能扩大攻击面",
+                "fix": "关闭非必要端口，或使用防火墙限制访问来源",
+                "pass_review_probability": "高"
+            },
+            {
+                "id": 8, "level": "信息", "title": "全站跳转检测",
+                "cwe": "", "cvss_score": "",
+                "affected_url": "https://www.example.com/",
+                "description": "目标域名302跳转到另一个域名（example.org），可能是品牌迁移或CDN分发",
+                "reproduction": "curl -skI https://www.example.com/ | grep -i location",
+                "impact": "用户需确认跳转是否预期，避免误报",
+                "fix": "无需修复，但扫描时已自动继续扫描目标域名本身",
+                "pass_review_probability": "高"
+            },
         ]
         report = generate_report(args.target, args.platform, findings)
     else:
