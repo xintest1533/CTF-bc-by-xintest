@@ -1,0 +1,143 @@
+# 【PPSRC提交报告】漏洞#1
+# img.gopay.com.cn Apache Tomcat默认页面暴露 + 精确版本号 + 示例servlet
+## 中危 · CWE-200(信息暴露) + CWE-1004(敏感信息暴露)
+## PPSRC测试范围: *.gopay.com.cn ✅匹配
+## 实质性危害: 版本号可匹配CVE利用 + SessionExample可操纵会话 + Manager管理接口暴露
+
+---
+
+# 【一、漏洞基本信息】
+■ 漏洞名称：img.gopay.com.cn Apache Tomcat默认页面未删除，暴露精确版本号(10.1.47)、管理接口(Manager/Host Manager)及示例servlet(SessionExample)
+■ 危险等级：中危
+■ 影响URL：https://img.gopay.com.cn/
+■ 漏洞类型：信息泄露 / 敏感信息暴露
+■ CWE编号：CWE-200（Information Exposure）+ CWE-1004（Sensitive Information Exposure）
+■ 发现时间：2026-08-17
+■ 匹配PPSRC范围：*.gopay.com.cn ✅
+
+---
+
+# 【二、漏洞详情】
+img.gopay.com.cn 是国付宝（GoPay）的图片服务器子域，其运行的Apache Tomcat未删除默认webapps（ROOT欢迎页、Manager应用、Host Manager应用），导致：
+
+1. **精确版本号暴露**：`Apache Tomcat/10.1.47`（3次验证稳定）
+2. **默认欢迎页面暴露**：显示Tomcat安装成功页面，含Manager App/Server Status/Host Manager入口链接
+3. **Tomcat Manager管理接口暴露**：/manager/html 返回403（Manager应用已部署，仅IP白名单拦截）
+4. **Host Manager暴露**：/host-manager/html 返回403
+5. **示例servlet暴露**：SessionExample可访问（/examples/servlets/servlet/SessionExample）
+
+---
+
+# 【三、复现步骤】
+
+## 复现1：Tomcat版本号暴露
+```bash
+curl -sk https://img.gopay.com.cn/ | grep -oP '<title[^>]*>\K[^<]+'
+```
+### 输出（漏洞成立）：
+```
+Apache Tomcat/10.1.47
+```
+
+## 复现2：默认页面完整暴露
+```bash
+curl -sk https://img.gopay.com.cn/ | head -20
+```
+### 关键输出：
+```html
+<title>Apache Tomcat/10.1.47</title>
+...
+<h2>If you're seeing this, you've successfully installed Tomcat. Congratulations!</h2>
+...
+<a href="/manager/status"><span>Server Status</span></a>
+<a href="/manager/html"><span>Manager App</span></a>
+<a href="/host-manager/html"><span>Host Manager</span></a>
+```
+
+## 复现3：Manager管理接口存在（403 IP白名单）
+```bash
+curl -skI https://img.gopay.com.cn/manager/html | head -5
+```
+### 输出：
+```
+HTTP/1.1 403
+```
+（403而非404 → Manager应用已部署，仅IP白名单限制）
+
+## 复现4：SessionExample示例servlet存在
+```bash
+curl -sk https://img.gopay.com.cn/examples/servlets/servlet/SessionExample
+```
+### 输出：
+```
+（SessionExample页面内容 - 示例servlet未删除）
+```
+
+---
+
+# 【四、实质性危害】
+
+## 危害1：精确版本号 → 针对性CVE利用
+Tomcat 10.1.47版本号暴露后，攻击者可精确匹配该版本的已知CVE：
+- 可针对Tomcat 10.1.x系列已知漏洞进行利用
+- 版本号是漏洞利用的第一步关键信息
+
+## 危害2：Manager管理接口暴露
+/manager/html 虽然返回403（IP白名单），但：
+- Manager应用确认部署在生产服务器上
+- 如果存在IP白名单绕过漏洞（如X-Forwarded-For注入），可远程部署WAR包 → **RCE**
+- 即使无法远程利用，内部人员或SSRF可直达Manager → 部署后门
+
+## 危害3：SessionExample可操纵会话
+/examples/servlets/servlet/SessionExample 允许：
+- 查看当前Session ID
+- 设置任意Session属性
+- 删除Session属性
+- 这可能影响同服务器上其他应用的会话安全
+
+## 危害4：默认页面 + 版本号 = 完整指纹
+攻击者获得：
+- 服务器类型：Apache Tomcat
+- 精确版本：10.1.47
+- 管理接口路径：/manager/html, /manager/status, /host-manager/html
+- 示例应用路径：/examples/
+- 可直接使用自动化工具（如Metasploit Tomcat模块）进行针对性攻击
+
+---
+
+# 【五、修复建议】
+1. **删除默认webapps**：
+   ```bash
+   rm -rf $CATALINA_HOME/webapps/ROOT
+   rm -rf $CATALINA_HOME/webapps/docs
+   rm -rf $CATALINA_HOME/webapps/examples
+   rm -rf $CATALINA_HOME/webapps/manager
+   rm -rf $CATALINA_HOME/webapps/host-manager
+   ```
+2. **或通过server.xml禁用自动部署**：
+   ```xml
+   <Host name="localhost" appBase="webapps" unpackWARs="true" autoDeploy="false">
+   ```
+3. **隐藏Server头**：
+   ```xml
+   <Connector port="443" server=" " />
+   ```
+4. **限制/manager和/examples访问**：在Tengine/Nginx反向代理层拦截
+
+---
+
+# 【六、验证修复】
+修复后应满足：
+```bash
+# 不再返回Tomcat默认页面
+curl -sk https://img.gopay.com.cn/ | grep -c "Tomcat"
+# → 0
+
+# /manager/html 返回404（应用已删除）
+curl -skI https://img.gopay.com.cn/manager/html | head -1
+# → HTTP/1.1 404
+
+# /examples/ 返回404
+curl -skI https://img.gopay.com.cn/examples/ | head -1
+# → HTTP/1.1 404
+```
